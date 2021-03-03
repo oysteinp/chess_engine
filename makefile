@@ -1,2 +1,2 @@
 all:
-	gcc chess.c -o chess
+	gcc src/chess.c -o chess
