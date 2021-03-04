@@ -1,5 +1,6 @@
 #include <stdio.h>
-#include <time.h>
+#include <sys/time.h>
+#include <string.h>
 
 //FEN debuging positions
 char start_position[] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -19,6 +20,8 @@ enum squares {
     a1=112, b1, c1, d1, e1, f1, g1, h1, no_sq
 };
 
+enum capture_flags  {all_moves, only_captures};
+
 //Castling binary representation
 // bin   dec
 // 0001    1    white king can castle to the king side
@@ -31,7 +34,7 @@ enum squares {
 // 1001         White king => king side
 //              Black king => queen side
 
-//Castling writes
+//Castling rights
 enum castling { KC = 1, QC = 2, kc = 4, qc = 8 }; 
 
 //Side to move
@@ -639,15 +642,245 @@ void generate_moves(moves *move_list) {
     }
 }
 
+int make_move(int move, int capture_flag) {
 
-int main() {
-    parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
-    print_board();
-    
+    if(capture_flag == all_moves) {
+
+        // Define board state variable copies ((should be in "class" or struct??)
+        int board_copy[128];
+        int side_copy;
+        int enpassant_copy;
+        int castle_copy;
+        int king_squares_copy[2];
+
+        //Copy
+        memcpy(board_copy, board, 512);
+        memcpy(king_squares_copy, king_squares, 8);
+        side_copy = side;
+        enpassant_copy = enpassant;
+        castle_copy = castle;
+
+        //Parse move
+        int from_square = get_move_source(move);
+        int to_square = get_move_target(move);
+        int promoted_piece = get_move_piece(move);
+        int enpass = get_move_enpassant(move);
+        int double_p_push = get_move_pawn(move);
+        int castling = get_move_castling(move);
+        
+        //Make move
+        board[to_square] = board[from_square];
+        board[from_square] = e;
+        if(promoted_piece) {
+            board[to_square] = promoted_piece;
+        }
+        if(enpass) {
+            if(side == white) {
+                board[to_square+16] = e;
+            } else {
+                board[to_square-16] = e;    
+            }
+        }
+        if(double_p_push) {
+            if(side == white) {
+                enpassant = to_square+16;
+            } else {
+                enpassant = to_square-16;   
+            }
+        } else {
+            enpassant = no_sq;
+        }
+        if(castling) {
+            if(to_square == g1) {
+                board[f1] = board[h1];
+                board[h1] = e;
+            } else if(to_square == c1) {
+                board[d1] = board[a1];
+                board[a1] = e;
+            } else if(to_square == g8) {
+                board[f8] = board[h8];
+                board[h8] = e;
+            } else if(to_square == c8) {
+                board[d8] = board[a8];
+                board[a8] = e;
+            }
+        
+        }
+
+        if(board[to_square] == K || board[to_square] == k) {
+            king_squares[side] = to_square;
+        }
+
+        
+        //Update castling rights
+        if(board[to_square] == K) {
+            castle = castle & 0xe;
+            castle = castle & 0xd;
+        } else if(board[to_square] == k) {
+            castle = castle & 0xb;
+            castle = castle & 0x7;
+        }
+        if(to_square == h1 || from_square == h1) {
+            castle = castle & 0xe;
+        } if(to_square == a1 || from_square == a1) {
+            castle = castle & 0xd;
+        } if(to_square == h8 || from_square == h8) {
+            castle = castle & 0xb;
+        } if(to_square == a8 || from_square == a8) {
+            castle = castle & 0x7;
+        }
+
+        //Check if king is in check after move
+        //king_squares[side]
+        if(is_square_attacked(king_squares[side], side ^ 1)) {
+            //Restore board
+            memcpy(board, board_copy, 512);
+            memcpy(king_squares, king_squares_copy, 8);
+            side = side_copy;
+            enpassant = enpassant_copy;
+            castle = castle_copy;
+            return 0;
+        }
+
+        //Change side
+        side ^= 1;
+
+        return 1;
+    }
+    // capture move
+    else
+    {
+        // if move is a capture
+        if (get_move_capture(move)) {
+            return make_move(move, all_moves);
+        }
+    }
+    return 0;
+}
+
+//Count nodes
+long nodes = 0;
+
+int getTimeInMs() {
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    return t.tv_sec * 1000 + t.tv_usec / 1000;
+}
+
+void perft(int depth) {
+
+    //escape condition
+    if(depth == 0) {
+        nodes++;
+        return;
+    }
+
     moves move_list[1];
 
     generate_moves(move_list);
-    print_move_list(move_list);
+
+    //Loop over generated moves
+    for(int move_count = 0; move_count < move_list->count; move_count++) {
+         // Define board state variable copies ((should be in "class" or struct??)
+        int board_copy[128];
+        int side_copy;
+        int enpassant_copy;
+        int castle_copy;
+        int king_squares_copy[2];
+
+        //Copy
+        memcpy(board_copy, board, 512);
+        memcpy(king_squares_copy, king_squares, 8);
+        side_copy = side;
+        enpassant_copy = enpassant;
+        castle_copy = castle;
+
+        if(!make_move(move_list->moves[move_count], all_moves)) {
+            continue;
+        }
+
+        //Make recursive call
+        perft(depth-1);
+
+         //Restore board
+        memcpy(board, board_copy, 512);
+        memcpy(king_squares, king_squares_copy, 8);
+        side = side_copy;
+        enpassant = enpassant_copy;
+        castle = castle_copy;
+    }
+}
+
+void perft_test(int depth) {
+
+    //Init start time
+    int start_time = getTimeInMs();
+
+    printf("\nPerformance test\n\n");
+    moves move_list[1];
+
+    generate_moves(move_list);
+
+    //Loop over generated moves
+    for(int move_count = 0; move_count < move_list->count; move_count++) {
+         // Define board state variable copies ((should be in "class" or struct??)
+        int board_copy[128];
+        int side_copy;
+        int enpassant_copy;
+        int castle_copy;
+        int king_squares_copy[2];
+
+        //Copy
+        memcpy(board_copy, board, 512);
+        memcpy(king_squares_copy, king_squares, 8);
+        side_copy = side;
+        enpassant_copy = enpassant;
+        castle_copy = castle;
+
+        if(!make_move(move_list->moves[move_count], all_moves)) {
+            continue;
+        }
+
+        //Cummulative nodes
+        long total_nodes = nodes;
+
+        //Make recursive call
+        perft(depth-1);
+
+        //Old nodes
+        long old_nodes = nodes - total_nodes;
+
+         //Restore board
+        memcpy(board, board_copy, 512);
+        memcpy(king_squares, king_squares_copy, 8);
+        side = side_copy;
+        enpassant = enpassant_copy;
+        castle = castle_copy;
+
+        //Print move
+        int currentMove = move_list->moves[move_count];
+        printf(" move  %d: %s%s%c     %ld\n",
+            move_count+1, 
+            square_to_coords[get_move_source(currentMove)],
+            square_to_coords[get_move_target(currentMove)],
+            promoted_pieces[get_move_piece(currentMove)],
+            old_nodes);
+    }
+    printf("\n Depth: %d", depth);
+    printf("\n Nodes: %ld", nodes);
+    printf("\n Time: %d ms\n\n", getTimeInMs()-start_time);
+}
+
+int main() {
+    //parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
+    //parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
+    parse_fen(start_position);
+    print_board();
+
+    clock_t start, end;
+    double cpu_time_used;
+    
+    perft_test(5);
 
     return 0;
 }
