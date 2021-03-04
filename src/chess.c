@@ -561,25 +561,27 @@ void generate_moves(moves *move_list) {
 
                     //White pawn captures
                     to_square = square - 15;
-                    if(!(to_square & 0x88) && ((board[to_square] >= p && board[to_square] <= q) || board[to_square] == enpassant)) {
+                    int enpassant_move = (to_square == enpassant);
+                    if(!(to_square & 0x88) && ((board[to_square] >= p && board[to_square] <= q) || enpassant_move)) {
                         if(square >= a7 && square <= h7) {
                             add_move(move_list, encode_move(square, to_square, Q, 1, 0, 0 ,0));
                             add_move(move_list, encode_move(square, to_square, R, 1, 0, 0 ,0));
                             add_move(move_list, encode_move(square, to_square, B, 1, 0, 0 ,0));
                             add_move(move_list, encode_move(square, to_square, N, 1, 0, 0 ,0));
                         } else {
-                            add_move(move_list, encode_move(square, to_square, 0, 1, 0, 0 ,0));
+                            add_move(move_list, encode_move(square, to_square, 0, 1, 0, enpassant_move, 0));
                         }
                     }
                     to_square = square - 17;
-                    if(!(to_square & 0x88) && ((board[to_square] >= p && board[to_square] <= q) || board[to_square] == enpassant)) {
+                    enpassant_move = (to_square == enpassant);
+                    if(!(to_square & 0x88) && ((board[to_square] >= p && board[to_square] <= q) || enpassant_move)) {
                         if(square >= a7 && square <= h7) {
                             add_move(move_list, encode_move(square, to_square, Q, 1, 0, 0 ,0));
                             add_move(move_list, encode_move(square, to_square, R, 1, 0, 0 ,0));
                             add_move(move_list, encode_move(square, to_square, B, 1, 0, 0 ,0));
                             add_move(move_list, encode_move(square, to_square, N, 1, 0, 0 ,0));
                         } else {
-                            add_move(move_list, encode_move(square, to_square, 0, 1, 0, 0 ,0));
+                            add_move(move_list, encode_move(square, to_square, 0, 1, 0, enpassant_move, 0));
                         }
                     }
                 }
@@ -610,25 +612,27 @@ void generate_moves(moves *move_list) {
 
                     //Black pawn captures
                     to_square = square + 15;
-                    if(!(to_square & 0x88) && ((board[to_square] >= P && board[to_square] <= Q) || board[to_square] == enpassant)) {
+                    int enpassant_move = (to_square == enpassant);
+                    if(!(to_square & 0x88) && ((board[to_square] >= P && board[to_square] <= Q) || enpassant_move)) {
                         if(square >= a2 && square <= h2) {
                             add_move(move_list, encode_move(square, to_square, q, 1, 0, 0 ,0));
                             add_move(move_list, encode_move(square, to_square, r, 1, 0, 0 ,0));
                             add_move(move_list, encode_move(square, to_square, b, 1, 0, 0 ,0));
                             add_move(move_list, encode_move(square, to_square, n, 1, 0, 0 ,0));
                         } else {
-                            add_move(move_list, encode_move(square, to_square, 0, 1, 0, 0 ,0));
+                            add_move(move_list, encode_move(square, to_square, 0, 1, 0, enpassant_move ,0));
                         }
                     }
                     to_square = square + 17;
-                    if(!(to_square & 0x88) && ((board[to_square] >= P && board[to_square] <= Q) || board[to_square] == enpassant)) {
+                    enpassant_move = (to_square == enpassant);
+                    if(!(to_square & 0x88) && ((board[to_square] >= P && board[to_square] <= Q) || enpassant_move)) {
                         if(square >= a2 && square <= h2) {
                             add_move(move_list, encode_move(square, to_square, q, 1, 0, 0 ,0));
                             add_move(move_list, encode_move(square, to_square, r, 1, 0, 0 ,0));
                             add_move(move_list, encode_move(square, to_square, b, 1, 0, 0 ,0));
                             add_move(move_list, encode_move(square, to_square, n, 1, 0, 0 ,0));
                         } else {
-                            add_move(move_list, encode_move(square, to_square, 0, 1, 0, 0 ,0));
+                            add_move(move_list, encode_move(square, to_square, 0, 1, 0, enpassant_move ,0));
                         }
                     }
                 }
@@ -873,8 +877,8 @@ void perft_test(int depth) {
 
 int main() {
     //parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
-    //parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
-    parse_fen(start_position);
+    parse_fen("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
+    //parse_fen(start_position);
     print_board();
 
     clock_t start, end;
