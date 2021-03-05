@@ -2,6 +2,8 @@
 #include <sys/time.h>
 #include <string.h>
 
+#include "chess.h"
+
 //FEN debuging positions
 char start_position[] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 char tricky_position[] = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
@@ -224,33 +226,29 @@ void print_move_list(moves *move_list)
 }
 
 int is_attacked_by_sliding_piece(int square, int side, int offsets[], int white_piece, int black_piece) {
-    int size = 4;
-    for(int i = 0; i < size; i++) {
-        int offset = offsets[i];
-        int target_square = square + offset;
-        int target_piece = board[target_square];
+    for(int i = 0; i < 4; i++) {
+        int target_square = square + offsets[i];
 
         while(!((target_square) & 0x88)) {
+            int target_piece = board[target_square];
             if(side == white ? (target_piece == white_piece || target_piece == Q) : (target_piece == black_piece || target_piece == q)) {
                 return 1;
             }
             if(target_piece) {
                 break;
             }
-            target_square += offset;
-            target_piece = board[target_square];
+            target_square += offsets[i];
         }
     }
-
     return 0;
 }
 
 int is_attacked_by_jumping_piece(int square, int side, int offsets[], int size, int white_piece, int black_piece) {
     for(int i = 0; i < size; i++) {
         int target_square = square + offsets[i];
-        int target_piece = board[target_square];
 
         if(!(target_square & 0x88)) {
+            int target_piece = board[target_square];
             if(side == white ? target_piece == white_piece : target_piece == black_piece) {
                 return 1;
             }
@@ -424,8 +422,7 @@ void add_move(moves *move_list, int move) {
 void generate_moves_for_jumping_piece(moves *move_list, int square, int side, int offsets[], int size, int white_piece, int black_piece) {
     if (side == white ? board[square] == white_piece : board[square] == black_piece) {
         for(int index = 0; index < size; index++) {
-            int offset = offsets[index];
-            int target_square = square + offset;
+            int target_square = square + offsets[index];
 
             if(!(target_square & 0x88)) {
                 if(side == white) {
@@ -447,13 +444,13 @@ void generate_moves_for_jumping_piece(moves *move_list, int square, int side, in
 }
 
 void generate_moves_for_sliding_piece(moves *move_list, int square, int side, int offsets[], int size, int white_piece, int black_piece) {
+    int target_piece = 0;
     if (side == white ? (board[square] == white_piece || board[square] == Q) : (board[square] == black_piece || board[square] == q)) {
         for(int index = 0; index < size; index++) {
-            int offset = offsets[index];
-            int target_square = square + offset;
-            int target_piece = board[target_square];
-
+            int target_square = square + offsets[index];
+            
             while(!((target_square) & 0x88)) {
+                target_piece = board[target_square];
                 if(target_piece == e) {
                     add_move(move_list, encode_move(square, target_square, 0, 0, 0, 0 ,0));
                 } else if(side == white && target_piece >= p && target_piece <= k) {
@@ -465,8 +462,7 @@ void generate_moves_for_sliding_piece(moves *move_list, int square, int side, in
                 } else {
                     break;
                 }
-                target_square += offset;
-                target_piece = board[target_square];
+                target_square += offsets[index];
             }
         }
     }
@@ -523,8 +519,6 @@ void generate_castling_moves(moves *move_list, int square, int side) {
     }
 }
 
-
-
 void generate_moves(moves *move_list) {
 
     move_list->count = 0;
@@ -539,8 +533,7 @@ void generate_moves(moves *move_list) {
                     int to_square = square - 16;
 
                     //check if target square is on board
-                    if(!(to_square & 0x88) && board[to_square] == e) {
-                        
+                    if(board[to_square] == e) {
                         //pawn promotions
                         if(square >= a7 && square <= h7) {
                             add_move(move_list, encode_move(square, to_square, Q, 0, 0, 0 ,0));
@@ -590,7 +583,7 @@ void generate_moves(moves *move_list) {
                     int to_square = square + 16;
 
                     //check if target square is on board
-                    if(!(to_square & 0x88) && board[to_square] == e) {
+                    if(board[to_square] == e) {
                         
                         //pawn promotions
                         if(square >= a2 && square <= h2) {
@@ -708,13 +701,11 @@ int make_move(int move, int capture_flag) {
                 board[d8] = board[a8];
                 board[a8] = e;
             }
-        
         }
 
         if(board[to_square] == K || board[to_square] == k) {
             king_squares[side] = to_square;
         }
-
         
         //Update castling rights
         if(board[to_square] == K) {
@@ -752,12 +743,8 @@ int make_move(int move, int capture_flag) {
         return 1;
     }
     // capture move
-    else
-    {
-        // if move is a capture
-        if (get_move_capture(move)) {
-            return make_move(move, all_moves);
-        }
+    else if (get_move_capture(move)) {
+        return make_move(move, all_moves);
     }
     return 0;
 }
@@ -784,7 +771,8 @@ void perft(int depth) {
     generate_moves(move_list);
 
     //Loop over generated moves
-    for(int move_count = 0; move_count < move_list->count; move_count++) {
+    int size = move_list->count;
+    for(int move_count = 0; move_count < size; move_count++) {
          // Define board state variable copies ((should be in "class" or struct??)
         int board_copy[128];
         int side_copy;
@@ -815,18 +803,20 @@ void perft(int depth) {
     }
 }
 
-void perft_test(int depth) {
+int perft_test(int depth, int debug) {
 
     //Init start time
     int start_time = getTimeInMs();
 
-    printf("\nPerformance test\n\n");
+    if(debug)
+        printf("\nPerformance test\n\n");
     moves move_list[1];
 
     generate_moves(move_list);
 
     //Loop over generated moves
-    for(int move_count = 0; move_count < move_list->count; move_count++) {
+    int size = move_list->count;
+    for(int move_count = 0; move_count < size; move_count++) {
          // Define board state variable copies ((should be in "class" or struct??)
         int board_copy[128];
         int side_copy;
@@ -863,28 +853,93 @@ void perft_test(int depth) {
 
         //Print move
         int currentMove = move_list->moves[move_count];
-        printf(" move  %d: %s%s%c     %ld\n",
+        if(debug) {
+            printf(" move  %d: %s%s%c     %ld\n",
             move_count+1, 
             square_to_coords[get_move_source(currentMove)],
             square_to_coords[get_move_target(currentMove)],
             promoted_pieces[get_move_piece(currentMove)],
             old_nodes);
+        }
+        
     }
+    int time = getTimeInMs() - start_time;
     printf("\n Depth: %d", depth);
     printf("\n Nodes: %ld", nodes);
-    printf("\n Time: %d ms\n\n", getTimeInMs()-start_time);
+    printf("\n Time: %d ms", time);
+    double secs = time/1000.0;
+    printf("\n Nodes/sec: %.0f\n", time>0?nodes/secs:0);
+    
+    return nodes;
 }
 
-int main() {
-    //parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
-    parse_fen("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
-    //parse_fen(start_position);
-    print_board();
+int perft_test2(int depth, char *fen) {
+    parse_fen(fen);
+    nodes = 0;
+    int nodes = perft_test(depth, 0);
+    return nodes;
+}
 
-    clock_t start, end;
-    double cpu_time_used;
-    
-    perft_test(5);
+void test(int expected, int actual, const char* testname) {
+    if(expected == actual) {
+        printf("%s PASSED\n", testname);
+    } else {
+        printf("\n%s FAILED expected: %d actual: %d", testname, expected, actual);
+    }
+}
+
+int main(int argc, char** argv) {
+    if (argv[1] && ! strcmp(argv[1], "test")) {
+        //Init start time
+        int start_time = getTimeInMs();
+
+        test(20, perft_test2(1, start_position), "Starting position, depth 1");
+        test(400, perft_test2(2, start_position), "Starting position, depth 2");
+        test(8902, perft_test2(3, start_position), "Starting position, depth 3");
+        test(197281, perft_test2(4, start_position), "Starting position, depth 4");
+        test(4865609, perft_test2(5, start_position), "Starting position, depth 5");
+
+        test(48, perft_test2(1, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "), "Chessprogramming pos 2, depth 1");
+        test(2039, perft_test2(2, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "), "Chessprogramming pos 2, depth 2");
+        test(97862, perft_test2(3, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "), "Chessprogramming pos 2, depth 3");
+        test(4085603, perft_test2(4, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "), "Chessprogramming pos 2, depth 4");
+        test(193690690, perft_test2(5, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "), "Chessprogramming pos 2, depth 5");
+
+        test(14, perft_test2(1, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "), "Chessprogramming pos 3, depth 1");
+        test(191, perft_test2(2, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "), "Chessprogramming pos 3, depth 2");
+        test(2812, perft_test2(3, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "), "Chessprogramming pos 3, depth 3");
+        test(43238, perft_test2(4, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "), "Chessprogramming pos 3, depth 4");
+        test(674624, perft_test2(5, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "), "Chessprogramming pos 3, depth 5");
+        test(11030083, perft_test2(6, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "), "Chessprogramming pos 3, depth 6");
+        
+        test(6, perft_test2(1, "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"), "Chessprogramming pos 4, depth 1");
+        test(264, perft_test2(2, "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"), "Chessprogramming pos 4, depth 2");
+        test(9467, perft_test2(3, "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"), "Chessprogramming pos 4, depth 3");
+        test(422333, perft_test2(4, "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"), "Chessprogramming pos 4, depth 4");
+        test(15833292, perft_test2(5, "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"), "Chessprogramming pos 4, depth 5");
+        
+        test(44, perft_test2(1, "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"), "Chessprogramming pos 5, depth 1");
+        test(1486, perft_test2(2, "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"), "Chessprogramming pos 5, depth 2");
+        test(62379, perft_test2(3, "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"), "Chessprogramming pos 5, depth 3");
+        test(2103487, perft_test2(4, "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"), "Chessprogramming pos 5, depth 4");
+        test(89941194, perft_test2(5, "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"), "Chessprogramming pos 5, depth 5");
+
+        test(46, perft_test2(1, "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"), "Chessprogramming pos 6, depth 1");
+        test(2079, perft_test2(2, "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"), "Chessprogramming pos 6, depth 2");
+        test(89890, perft_test2(3, "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"), "Chessprogramming pos 6, depth 3");
+        test(3894594, perft_test2(4, "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"), "Chessprogramming pos 6, depth 4");
+        test(164075551, perft_test2(5, "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"), "Chessprogramming pos 6, depth 5");
+        
+        printf("Tests used %dms.\n\n", getTimeInMs()-start_time);
+    }
+    else {
+        //parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
+        parse_fen("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
+        //parse_fen(start_position);
+        print_board();
+
+        perft_test(5, 1);
+    }
 
     return 0;
 }
