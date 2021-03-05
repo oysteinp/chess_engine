@@ -243,8 +243,8 @@ int is_attacked_by_sliding_piece(int square, int side, int offsets[], int white_
     return 0;
 }
 
-int is_attacked_by_jumping_piece(int square, int side, int offsets[], int size, int white_piece, int black_piece) {
-    for(int i = 0; i < size; i++) {
+int is_attacked_by_jumping_piece(int square, int side, int offsets[], int white_piece, int black_piece) {
+    for(int i = 0; i < 8; i++) {
         int target_square = square + offsets[i];
 
         if(!(target_square & 0x88)) {
@@ -276,11 +276,11 @@ int is_square_attacked(int square, int side) {
         }
     }
     
-    if(is_attacked_by_jumping_piece(square, side, knight_offsets, 8, N, n)) {
+    if(is_attacked_by_jumping_piece(square, side, knight_offsets, N, n)) {
         return 1;
     }
 
-    if(is_attacked_by_jumping_piece(square, side, king_offsets, 8, K, k)) {
+    if(is_attacked_by_jumping_piece(square, side, king_offsets, K, k)) {
         return 1;
     }
 
