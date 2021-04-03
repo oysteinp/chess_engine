@@ -955,6 +955,10 @@ void print_move(int move) {
     printf("%s%s\n", square_to_coords[get_move_source(move)], square_to_coords[get_move_target(move)]);
 }
 
+void print_move_and_eval(int move, int eval) {
+    printf("%s%s, eval = %d\n", square_to_coords[get_move_source(move)], square_to_coords[get_move_target(move)], eval);
+}
+
 int areThereAnyLegalMoves() {
     moves move_list[1];
     generate_moves(move_list);
@@ -994,7 +998,6 @@ int areThereAnyLegalMoves() {
 int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int beta) {
     if(depth == 0) {
         int score = evaluate(board);
-        //printf("Score = %d\n", score);
         return score;
     } 
     if(maximizingPlayer) {
@@ -1030,8 +1033,9 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
             if(eval > maxEval) {
                 //printf("New best move = ");
                 if(depth == initialDepth) {
-                    print_move(move);
-                    printf("Eval = %d\n", eval);
+                    print_move_and_eval(move, eval);
+                    //print_move(move);
+                    //printf("Eval = %d\n", eval);
                     bestMoveWhite = move;
                 }
                 maxEval = eval;
@@ -1049,7 +1053,6 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
             side = side_copy;
             enpassant = enpassant_copy;
             castle = castle_copy;
-
         }
         if(!foundLegalMove){
             //If check
@@ -1066,7 +1069,6 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
             return -888888-depth;
         }
         return maxEval;
-
     } else {
         int minEval = 9999999;
         moves move_list[1];
@@ -1118,7 +1120,6 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
             side = side_copy;
             enpassant = enpassant_copy;
             castle = castle_copy;
-
         }
         if(!foundLegalMove){
             if(side == black) {
@@ -1133,9 +1134,7 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
             }
             return 888888+depth;
         }
-        
         return minEval;
-        
     }
 }
 
@@ -1185,49 +1184,49 @@ int main(int argc, char** argv) {
     }
     else {
         //parse_fen("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
-        //parse_fen(start_position);
+        parse_fen(start_position);
         //parse_fen("4k3/4P3/8/8/R7/8/3qPb2/4K3 w - - 0 1");
         //parse_fen("4k3/R7/7R/8/8/8/8/1K6 w - - 0 1");
         //parse_fen("r5rk/5p1p/5R2/4B3/8/8/7P/7K w - - 0 1"); //Mate in three
         //parse_fen("7R/r1p1q1pp/3k4/1p1n1Q2/3N4/8/1PP2PPP/2B3K1 w - - 1 0"); //Mate in four
         //parse_fen("Q7/p1p1q1pk/3p2rp/4n3/3bP3/7b/PP3PPK/R1B2R2 b - - 0 1"); //Mate in four
+        parse_fen("7R/r1p1q1pp/3k4/1p1n1Q2/3N4/8/1PP2PPP/2B3K1 w - - 1 0"); //Mate in four
         //parse_fen("r2qkbnr/ppp1pppp/2b5/8/P1B5/1QP1P3/3P1PPP/RNB1K1NR b KQk - 3 10"); //Black should not caputre with queen
         //parse_fen("rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 7 11"); //Mate in seven
         //parse_fen("8/r1r3pk/1N2pp2/3p4/P2QP1qp/1R6/2PB2P1/5RK1 w - - 8 41");
         //parse_fen("8/8/8/8/6k1/5q2/8/6K1 b - - 0 1"); //Avoid stalemate draw
-        parse_fen("1k6/8/2Q5/1K6/8/8/8/8 w - - 0 1"); //Avoid stalemate draw
+        //parse_fen("1k6/8/2Q5/1K6/8/8/8/8 w - - 0 1"); //Avoid stalemate draw
         
         //parse_fen("3r1rk1/pbb4p/1q3ppP/1B1P4/4PR2/5N2/1Q3PP1/2R2K2 w - - 0 1");
         print_board();
 
         int playOn = 1;
         while(playOn) {
+            printf("**********************\n");
             if(side == white) {
-                int score = minimax(6, 6, 1, -9999999, 9999999);
+                int score = minimax(8, 8, 1, -9999999, 9999999);
             
-                printf("Best move = ");
+                printf("Making move: ");
                 print_move(bestMoveWhite);
-                printf("Max score white: %d\n", score);
 
                 make_move(bestMoveWhite, all_moves);
                 if(is_square_attacked(king_squares[1], white) && !areThereAnyLegalMoves()) {
                     printf("1-0\n");
                     playOn = 0;
                 }
-                print_board();
+                //print_board();
             } else {
                 int score = minimax(8, 8, 1, -9999999, 9999999);
             
-                printf("Best move = ");
+                printf("Making move: ");
                 print_move(bestMoveWhite);
-                printf("Max score black: %d\n", score);
 
                 make_move(bestMoveWhite, all_moves);
                 if(is_square_attacked(king_squares[0], black) && !areThereAnyLegalMoves()) {
                     printf("0-1\n");
                     playOn = 0;
                 }
-                print_board();
+                //print_board();
             }
         }
     }
