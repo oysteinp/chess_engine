@@ -4,12 +4,17 @@
 
 #include "chess.h"
 
+int bestMoveWhite = 0;
+int bestMoveBlack = 0;
+
 //FEN debuging positions
 char start_position[] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 char tricky_position[] = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
 
 //piece encooding
 enum pieces {e, P, N, B, R, Q, K, p, n, b, r, q, k, o};
+
+int piece_values[14] = {0,100,300,310,500,900,100000,100,300,310,500,900,100000,0};
 
 enum squares {
     a8=0, b8, c8, d8, e8, f8, g8, h8,
@@ -166,9 +171,15 @@ int king_offsets[8] = {15,17,-15,-17,16,1,-1,-16};
 typedef struct {
     //Move list
     int moves[256];
-
     //Move count;
     int count;
+
+    //Captures
+    int captures[256];
+    int captureCount;
+
+    int noCaptures[256];
+    int noCaptureCount;
 } moves;
 
 void print_board() {
@@ -415,8 +426,13 @@ void parse_fen(char *fen) {
 }
 
 void add_move(moves *move_list, int move) {
-    move_list->moves[move_list->count] = move;
-    move_list->count++;
+    if(get_move_capture(move)) {
+        move_list->captures[move_list->captureCount] = move;
+        move_list->captureCount++;
+    } else {
+        move_list->noCaptures[move_list->noCaptureCount] = move;
+        move_list->noCaptureCount++;
+    }
 }
 
 void generate_moves_for_jumping_piece(moves *move_list, int square, int side, int offsets[], int size, int white_piece, int black_piece) {
@@ -522,6 +538,8 @@ void generate_castling_moves(moves *move_list, int square, int side) {
 void generate_moves(moves *move_list) {
 
     move_list->count = 0;
+    move_list->captureCount = 0;
+    move_list->noCaptureCount = 0;
 
     for(int square = 0; square < 128; square ++) {
         if(!(square & 0x88)) {
@@ -636,6 +654,21 @@ void generate_moves(moves *move_list) {
             generate_moves_for_sliding_piece(move_list, square, side, bishop_offsets, 4, B, b);
             generate_moves_for_sliding_piece(move_list, square, side, rook_offsets, 4, R, r);
         }
+    }
+
+    //Add moves to same list
+    int size = move_list->captureCount;
+    for(int move_count = 0; move_count < size; move_count++) {
+        int move = move_list->captures[move_count];
+        move_list->moves[move_list->count] = move;
+        move_list->count++;
+    }
+
+    size = move_list->noCaptureCount;
+    for(int move_count = 0; move_count < size; move_count++) {
+        int move = move_list->noCaptures[move_count];
+        move_list->moves[move_list->count] = move;
+        move_list->count++;
     }
 }
 
@@ -888,6 +921,224 @@ void test(int expected, int actual, const char* testname) {
     }
 }
 
+int* count_material (int board[]) {
+    int result[2];
+    result[0] = 0;
+    result[1] = 0;
+
+    for(int square = 0; square < 128; square ++) {
+        if(!(square & 0x88)) {
+            int current_piece = board[square];
+            if(current_piece >= P && current_piece <= Q) {
+                result[0] += piece_values[current_piece];
+            } else if (current_piece >= p && current_piece <= q){
+                result[1] += piece_values[current_piece];
+            }
+        }
+    }
+    return result;
+}
+
+int evaluate(int board[]) {
+
+    int whiteEval = 0;
+    int blackEval = 0;
+
+    int* material = count_material(board);
+
+    whiteEval += material[0];
+    blackEval += material[1];
+    return (side == white) ? whiteEval - blackEval : blackEval - whiteEval;
+}
+
+void print_move(int move) {
+    printf("%s%s\n", square_to_coords[get_move_source(move)], square_to_coords[get_move_target(move)]);
+}
+
+int areThereAnyLegalMoves() {
+    moves move_list[1];
+    generate_moves(move_list);
+    int size = move_list->count;
+    int foundLegalMove = 0;
+    for(int move_count = 0; move_count < size; move_count++) {
+        //Make move
+        int board_copy[128];
+        int side_copy;
+        int enpassant_copy;
+        int castle_copy;
+        int king_squares_copy[2];
+
+        //Copy
+        memcpy(board_copy, board, 512);
+        memcpy(king_squares_copy, king_squares, 8);
+        side_copy = side;
+        enpassant_copy = enpassant;
+        castle_copy = castle;
+
+        int move = move_list->moves[move_count];
+        if(make_move(move, all_moves)) {
+            foundLegalMove = 1;
+        }
+
+        //Restore board
+        memcpy(board, board_copy, 512);
+        memcpy(king_squares, king_squares_copy, 8);
+        side = side_copy;
+        enpassant = enpassant_copy;
+        castle = castle_copy;
+
+    }
+    return foundLegalMove;
+}
+
+int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int beta) {
+    if(depth == 0) {
+        int score = evaluate(board);
+        //printf("Score = %d\n", score);
+        return score;
+    } 
+    if(maximizingPlayer) {
+        int maxEval = -9999999;
+        moves move_list[1];
+        generate_moves(move_list);
+
+        //Loop over generated moves
+        int size = move_list->count;
+        int foundLegalMove = 0;
+        for(int move_count = 0; move_count < size; move_count++) {
+            //Make move
+            int board_copy[128];
+            int side_copy;
+            int enpassant_copy;
+            int castle_copy;
+            int king_squares_copy[2];
+
+            //Copy
+            memcpy(board_copy, board, 512);
+            memcpy(king_squares_copy, king_squares, 8);
+            side_copy = side;
+            enpassant_copy = enpassant;
+            castle_copy = castle;
+
+            int move = move_list->moves[move_count];
+            if(!make_move(move, all_moves)) {
+                continue;
+            } else {
+                foundLegalMove = 1;
+            }
+            int eval = minimax(initialDepth, depth -1, 0, alpha, beta);
+            if(eval > maxEval) {
+                //printf("New best move = ");
+                if(depth == initialDepth) {
+                    print_move(move);
+                    printf("Eval = %d\n", eval);
+                    bestMoveWhite = move;
+                }
+                maxEval = eval;
+            }
+            if(eval > alpha) {
+                alpha = eval;
+            }
+            if(beta <= alpha) {
+                break;
+            }
+
+            //Restore board
+            memcpy(board, board_copy, 512);
+            memcpy(king_squares, king_squares_copy, 8);
+            side = side_copy;
+            enpassant = enpassant_copy;
+            castle = castle_copy;
+
+        }
+        if(!foundLegalMove){
+            //If check
+            if(side == black) {
+                if(!is_square_attacked(king_squares[1], white))  {
+                    return 0;
+                }
+            } 
+            else {
+                if(!is_square_attacked(king_squares[0], black))  {
+                    return 0;
+                }
+            }
+            return -888888-depth;
+        }
+        return maxEval;
+
+    } else {
+        int minEval = 9999999;
+        moves move_list[1];
+        generate_moves(move_list);
+
+        //Loop over generated moves
+        int size = move_list->count;
+        int foundLegalMove = 0;
+        for(int move_count = 0; move_count < size; move_count++) {
+            //Make move
+            int board_copy[128];
+            int side_copy;
+            int enpassant_copy;
+            int castle_copy;
+            int king_squares_copy[2];
+
+            //Copy
+            memcpy(board_copy, board, 512);
+            memcpy(king_squares_copy, king_squares, 8);
+            side_copy = side;
+            enpassant_copy = enpassant;
+            castle_copy = castle;
+
+            int move = move_list->moves[move_count];
+            if(!make_move(move, all_moves)) {
+                continue;
+            } else {
+                foundLegalMove = 1;
+            }
+            int eval = minimax(initialDepth, depth -1, 1, alpha, beta);
+            if(eval < minEval) {
+                if(depth == initialDepth) {
+                    print_move(move);
+                    printf("Eval = %d\n", eval);
+                    bestMoveBlack = move;
+                }
+                minEval = eval;
+            }
+            if(eval < beta) {
+                beta = eval;
+            }
+            if(beta <= alpha) {
+                break;
+            }
+
+            //Restore board
+            memcpy(board, board_copy, 512);
+            memcpy(king_squares, king_squares_copy, 8);
+            side = side_copy;
+            enpassant = enpassant_copy;
+            castle = castle_copy;
+
+        }
+        if(!foundLegalMove){
+            if(side == black) {
+                if(!is_square_attacked(king_squares[1], white))  {
+                    return 0;
+                }
+            } 
+            else {
+                if(!is_square_attacked(king_squares[0], black))  {
+                    return 0;
+                }
+            }
+            return 888888+depth;
+        }
+        
+        return minEval;
+        
+    }
+}
+
 int main(int argc, char** argv) {
     if (argv[1] && ! strcmp(argv[1], "test")) {
         //Init start time
@@ -933,13 +1184,52 @@ int main(int argc, char** argv) {
         printf("Tests used %dms.\n\n", getTimeInMs()-start_time);
     }
     else {
-        //parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
-        parse_fen("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
+        //parse_fen("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
         //parse_fen(start_position);
+        //parse_fen("4k3/4P3/8/8/R7/8/3qPb2/4K3 w - - 0 1");
+        //parse_fen("4k3/R7/7R/8/8/8/8/1K6 w - - 0 1");
+        //parse_fen("r5rk/5p1p/5R2/4B3/8/8/7P/7K w - - 0 1"); //Mate in three
+        //parse_fen("7R/r1p1q1pp/3k4/1p1n1Q2/3N4/8/1PP2PPP/2B3K1 w - - 1 0"); //Mate in four
+        //parse_fen("Q7/p1p1q1pk/3p2rp/4n3/3bP3/7b/PP3PPK/R1B2R2 b - - 0 1"); //Mate in four
+        //parse_fen("r2qkbnr/ppp1pppp/2b5/8/P1B5/1QP1P3/3P1PPP/RNB1K1NR b KQk - 3 10"); //Black should not caputre with queen
+        //parse_fen("rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 7 11"); //Mate in seven
+        //parse_fen("8/r1r3pk/1N2pp2/3p4/P2QP1qp/1R6/2PB2P1/5RK1 w - - 8 41");
+        //parse_fen("8/8/8/8/6k1/5q2/8/6K1 b - - 0 1"); //Avoid stalemate draw
+        parse_fen("1k6/8/2Q5/1K6/8/8/8/8 w - - 0 1"); //Avoid stalemate draw
+        
+        //parse_fen("3r1rk1/pbb4p/1q3ppP/1B1P4/4PR2/5N2/1Q3PP1/2R2K2 w - - 0 1");
         print_board();
 
-        perft_test(5, 1);
-    }
+        int playOn = 1;
+        while(playOn) {
+            if(side == white) {
+                int score = minimax(6, 6, 1, -9999999, 9999999);
+            
+                printf("Best move = ");
+                print_move(bestMoveWhite);
+                printf("Max score white: %d\n", score);
 
+                make_move(bestMoveWhite, all_moves);
+                if(is_square_attacked(king_squares[1], white) && !areThereAnyLegalMoves()) {
+                    printf("1-0\n");
+                    playOn = 0;
+                }
+                print_board();
+            } else {
+                int score = minimax(8, 8, 1, -9999999, 9999999);
+            
+                printf("Best move = ");
+                print_move(bestMoveWhite);
+                printf("Max score black: %d\n", score);
+
+                make_move(bestMoveWhite, all_moves);
+                if(is_square_attacked(king_squares[0], black) && !areThereAnyLegalMoves()) {
+                    printf("0-1\n");
+                    playOn = 0;
+                }
+                print_board();
+            }
+        }
+    }
     return 0;
 }
