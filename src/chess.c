@@ -995,9 +995,12 @@ int areThereAnyLegalMoves() {
     return foundLegalMove;
 }
 
+int principalLine[20];
+
 int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int beta) {
     if(depth == 0) {
         int score = evaluate(board);
+        principalLine[initialDepth-1];
         return score;
     } 
     if(maximizingPlayer) {
@@ -1027,6 +1030,7 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
             if(!make_move(move, all_moves)) {
                 continue;
             } else {
+                principalLine[initialDepth-depth] = move;
                 foundLegalMove = 1;
             }
             int eval = minimax(initialDepth, depth -1, 0, alpha, beta);
@@ -1034,6 +1038,9 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
                 //printf("New best move = ");
                 if(depth == initialDepth) {
                     print_move_and_eval(move, eval);
+                    for(int i=0; i<initialDepth; i++) {
+                        print_move(principalLine[i]);
+                    }
                     //print_move(move);
                     //printf("Eval = %d\n", eval);
                     bestMoveWhite = move;
@@ -1056,16 +1063,10 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
         }
         if(!foundLegalMove){
             //If check
-            if(side == black) {
-                if(!is_square_attacked(king_squares[1], white))  {
-                    return 0;
-                }
-            } 
-            else {
-                if(!is_square_attacked(king_squares[0], black))  {
-                    return 0;
-                }
+            if(!is_square_attacked(king_squares[side], !side))  {
+                return 0;
             }
+           
             return -888888-depth;
         }
         return maxEval;
@@ -1093,9 +1094,11 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
             castle_copy = castle;
 
             int move = move_list->moves[move_count];
+            
             if(!make_move(move, all_moves)) {
                 continue;
             } else {
+                principalLine[initialDepth-depth] = move;
                 foundLegalMove = 1;
             }
             int eval = minimax(initialDepth, depth -1, 1, alpha, beta);
@@ -1122,18 +1125,11 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
             castle = castle_copy;
         }
         if(!foundLegalMove){
-            if(side == black) {
-                if(!is_square_attacked(king_squares[1], white))  {
-                    return 0;
-                }
-            } 
-            else {
-                if(!is_square_attacked(king_squares[0], black))  {
-                    return 0;
-                }
+            if(!is_square_attacked(king_squares[side], !side))  {
+                return 0;
             }
             return 888888+depth;
-        }
+        }  
         return minEval;
     }
 }
@@ -1184,13 +1180,14 @@ int main(int argc, char** argv) {
     }
     else {
         //parse_fen("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
-        parse_fen(start_position);
+        //parse_fen(start_position);
         //parse_fen("4k3/4P3/8/8/R7/8/3qPb2/4K3 w - - 0 1");
         //parse_fen("4k3/R7/7R/8/8/8/8/1K6 w - - 0 1");
+        //parse_fen("3k4/8/8/8/8/7R/R7/3K4 w - - 0 1");
         //parse_fen("r5rk/5p1p/5R2/4B3/8/8/7P/7K w - - 0 1"); //Mate in three
         //parse_fen("7R/r1p1q1pp/3k4/1p1n1Q2/3N4/8/1PP2PPP/2B3K1 w - - 1 0"); //Mate in four
         //parse_fen("Q7/p1p1q1pk/3p2rp/4n3/3bP3/7b/PP3PPK/R1B2R2 b - - 0 1"); //Mate in four
-        parse_fen("7R/r1p1q1pp/3k4/1p1n1Q2/3N4/8/1PP2PPP/2B3K1 w - - 1 0"); //Mate in four
+        //parse_fen("7R/r1p1q1pp/3k4/1p1n1Q2/3N4/8/1PP2PPP/2B3K1 w - - 1 0"); //Mate in four
         //parse_fen("r2qkbnr/ppp1pppp/2b5/8/P1B5/1QP1P3/3P1PPP/RNB1K1NR b KQk - 3 10"); //Black should not caputre with queen
         //parse_fen("rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 7 11"); //Mate in seven
         //parse_fen("8/r1r3pk/1N2pp2/3p4/P2QP1qp/1R6/2PB2P1/5RK1 w - - 8 41");
@@ -1198,6 +1195,7 @@ int main(int argc, char** argv) {
         //parse_fen("1k6/8/2Q5/1K6/8/8/8/8 w - - 0 1"); //Avoid stalemate draw
         
         //parse_fen("3r1rk1/pbb4p/1q3ppP/1B1P4/4PR2/5N2/1Q3PP1/2R2K2 w - - 0 1");
+        parse_fen("8/8/8/8/3b4/4k3/2B2p2/5K1R w - - 10 65");
         print_board();
 
         int playOn = 1;
