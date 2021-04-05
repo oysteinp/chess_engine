@@ -939,6 +939,46 @@ int* count_material (int board[]) {
     return result;
 }
 
+int forceKingToCorner(int movingKingSquare, int opponentKingSquare, int opponentNumberOfPieces) {
+    if(opponentNumberOfPieces > 4) {
+        return 0;
+    }
+    int opponentKingRank = 8-(opponentKingSquare/16);
+    int opponentKingFile = 1 + (opponentKingSquare % 16);
+
+    int oppoonentKingDistanceToCentreRank = 0;
+    if(3-opponentKingRank > opponentKingRank -4) {
+        oppoonentKingDistanceToCentreRank = 3-opponentKingRank;
+    } else {
+        oppoonentKingDistanceToCentreRank = opponentKingRank -4;
+    }
+
+    int oppoonentKingDistanceToCentreFile = 0;
+    if(3-opponentKingFile > opponentKingFile -4) {
+        oppoonentKingDistanceToCentreFile = 3-opponentKingFile;
+    } else {
+        oppoonentKingDistanceToCentreFile = opponentKingFile -4;
+    }
+    int opponentKingDistanceFromCentre = oppoonentKingDistanceToCentreRank + oppoonentKingDistanceToCentreFile;
+
+    int movingKingRank = 8-(movingKingSquare/16);
+    int movingKingFile = 1 + (movingKingSquare % 16);
+
+    int distBetweenKingsFile = (movingKingFile - opponentKingFile > 0) ? (movingKingFile - opponentKingFile > 0) : (opponentKingFile - movingKingFile);
+    int distBetweenKingsRank = (movingKingRank - opponentKingRank > 0) ? (movingKingRank - opponentKingRank > 0) : (opponentKingRank - movingKingRank);
+    int distBetweenKings = distBetweenKingsFile + distBetweenKingsRank;
+
+    opponentKingDistanceFromCentre += (14-distBetweenKings);
+
+    return opponentKingDistanceFromCentre;
+}
+
+typedef struct LINE {
+    int cmove;              // Number of moves in the line.
+    int argmove[10];  // The line.
+}   LINE;
+
+
 int evaluate(int board[]) {
 
     int whiteEval = 0;
@@ -948,15 +988,22 @@ int evaluate(int board[]) {
 
     whiteEval += material[0];
     blackEval += material[1];
-    return (side == white) ? whiteEval - blackEval : blackEval - whiteEval;
+
+    int endgameEval = 0; //forceKingToCorner(king_squares[side], king_squares[!side], 1);
+
+    int result =  (side == white) ? whiteEval - blackEval : blackEval - whiteEval;
+
+    result = (side == white) ? result+endgameEval : result-endgameEval;
+
+    return result;
 }
 
-void print_move(int move) {
-    printf("%s%s\n", square_to_coords[get_move_source(move)], square_to_coords[get_move_target(move)]);
-}
-
-void print_move_and_eval(int move, int eval) {
-    printf("%s%s, eval = %d\n", square_to_coords[get_move_source(move)], square_to_coords[get_move_target(move)], eval);
+void print_move(int move, int newLine) {
+    if(newLine) {
+        printf("%s%s\n", square_to_coords[get_move_source(move)], square_to_coords[get_move_target(move)]);
+    } else {
+        printf("%s%s", square_to_coords[get_move_source(move)], square_to_coords[get_move_target(move)]);
+    }
 }
 
 int areThereAnyLegalMoves() {
@@ -995,21 +1042,21 @@ int areThereAnyLegalMoves() {
     return foundLegalMove;
 }
 
-int principalLine[20];
-
-int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int beta) {
+int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int beta, LINE * pline) {
+    LINE line;
     if(depth == 0) {
+        pline->cmove = 0;
         int score = evaluate(board);
-        principalLine[initialDepth-1];
         return score;
     } 
+    moves move_list[1];
+    generate_moves(move_list);
+    int size = move_list->count;
+
     if(maximizingPlayer) {
         int maxEval = -9999999;
-        moves move_list[1];
-        generate_moves(move_list);
 
         //Loop over generated moves
-        int size = move_list->count;
         int foundLegalMove = 0;
         for(int move_count = 0; move_count < size; move_count++) {
             //Make move
@@ -1030,24 +1077,19 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
             if(!make_move(move, all_moves)) {
                 continue;
             } else {
-                principalLine[initialDepth-depth] = move;
                 foundLegalMove = 1;
             }
-            int eval = minimax(initialDepth, depth -1, 0, alpha, beta);
+            int eval = minimax(initialDepth, depth -1, 0, alpha, beta, &line);
             if(eval > maxEval) {
-                //printf("New best move = ");
                 if(depth == initialDepth) {
-                    print_move_and_eval(move, eval);
-                    for(int i=0; i<initialDepth; i++) {
-                        print_move(principalLine[i]);
-                    }
-                    //print_move(move);
-                    //printf("Eval = %d\n", eval);
                     bestMoveWhite = move;
                 }
                 maxEval = eval;
             }
             if(eval > alpha) {
+                pline->argmove[0] = move;
+                memcpy(pline->argmove + 1, line.argmove, line.cmove * sizeof(int));
+                pline->cmove = line.cmove + 1;
                 alpha = eval;
             }
             if(beta <= alpha) {
@@ -1066,17 +1108,13 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
             if(!is_square_attacked(king_squares[side], !side))  {
                 return 0;
             }
-           
             return -888888-depth;
         }
         return maxEval;
     } else {
         int minEval = 9999999;
-        moves move_list[1];
-        generate_moves(move_list);
 
         //Loop over generated moves
-        int size = move_list->count;
         int foundLegalMove = 0;
         for(int move_count = 0; move_count < size; move_count++) {
             //Make move
@@ -1098,14 +1136,14 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
             if(!make_move(move, all_moves)) {
                 continue;
             } else {
-                principalLine[initialDepth-depth] = move;
                 foundLegalMove = 1;
             }
-            int eval = minimax(initialDepth, depth -1, 1, alpha, beta);
+            int eval = minimax(initialDepth, depth -1, 1, alpha, beta, &line);
             if(eval < minEval) {
+                pline->argmove[0] = move;
+                memcpy(pline->argmove + 1, line.argmove, line.cmove * sizeof(int));
+                pline->cmove = line.cmove + 1;
                 if(depth == initialDepth) {
-                    print_move(move);
-                    printf("Eval = %d\n", eval);
                     bestMoveBlack = move;
                 }
                 minEval = eval;
@@ -1179,33 +1217,47 @@ int main(int argc, char** argv) {
         printf("Tests used %dms.\n\n", getTimeInMs()-start_time);
     }
     else {
+        int gameStart = getTimeInMs();
         //parse_fen("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
         //parse_fen(start_position);
         //parse_fen("4k3/4P3/8/8/R7/8/3qPb2/4K3 w - - 0 1");
+        //parse_fen("3k4/R6R/8/8/8/8/8/8 w - - 0 1");
         //parse_fen("4k3/R7/7R/8/8/8/8/1K6 w - - 0 1");
         //parse_fen("3k4/8/8/8/8/7R/R7/3K4 w - - 0 1");
         //parse_fen("r5rk/5p1p/5R2/4B3/8/8/7P/7K w - - 0 1"); //Mate in three
         //parse_fen("7R/r1p1q1pp/3k4/1p1n1Q2/3N4/8/1PP2PPP/2B3K1 w - - 1 0"); //Mate in four
         //parse_fen("Q7/p1p1q1pk/3p2rp/4n3/3bP3/7b/PP3PPK/R1B2R2 b - - 0 1"); //Mate in four
         //parse_fen("7R/r1p1q1pp/3k4/1p1n1Q2/3N4/8/1PP2PPP/2B3K1 w - - 1 0"); //Mate in four
+        parse_fen("6k1/3b3r/1p1p4/p1n2p2/1PPNpP1q/P3Q1p1/1R1RB1P1/5K2 b - - 0 1"); //Mate in five
         //parse_fen("r2qkbnr/ppp1pppp/2b5/8/P1B5/1QP1P3/3P1PPP/RNB1K1NR b KQk - 3 10"); //Black should not caputre with queen
         //parse_fen("rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 7 11"); //Mate in seven
         //parse_fen("8/r1r3pk/1N2pp2/3p4/P2QP1qp/1R6/2PB2P1/5RK1 w - - 8 41");
         //parse_fen("8/8/8/8/6k1/5q2/8/6K1 b - - 0 1"); //Avoid stalemate draw
         //parse_fen("1k6/8/2Q5/1K6/8/8/8/8 w - - 0 1"); //Avoid stalemate draw
+        //parse_fen("8/8/3k4/8/8/3K4/8/3R4 w - - 0 1"); //Rooks vs king
+        //parse_fen("8/3KP3/8/8/8/8/6k1/7q b - - 0 1"); //Q vs king and pawn
         
         //parse_fen("3r1rk1/pbb4p/1q3ppP/1B1P4/4PR2/5N2/1Q3PP1/2R2K2 w - - 0 1");
-        parse_fen("8/8/8/8/3b4/4k3/2B2p2/5K1R w - - 10 65");
-        print_board();
+        //parse_fen("8/8/8/8/3b4/4k3/2B2p2/5K1R w - - 10 65");
+        //print_board();
 
         int playOn = 1;
+        int PLY = 8;
         while(playOn) {
+            //Init start time
+            int start_time = getTimeInMs();
             printf("**********************\n");
+            LINE line;
             if(side == white) {
-                int score = minimax(8, 8, 1, -9999999, 9999999);
-            
-                printf("Making move: ");
-                print_move(bestMoveWhite);
+                int score = minimax(PLY, PLY, 1, -9999999, 9999999, &line);
+
+                printf("Principal line: %d\n", score);
+                for(int i=0; i< line.cmove; i++) {
+                    print_move(line.argmove[i],0);
+                    printf(" ");
+                }
+                printf("\nMaking move: ");
+                print_move(bestMoveWhite,1);
 
                 make_move(bestMoveWhite, all_moves);
                 if(is_square_attacked(king_squares[1], white) && !areThereAnyLegalMoves()) {
@@ -1214,19 +1266,27 @@ int main(int argc, char** argv) {
                 }
                 //print_board();
             } else {
-                int score = minimax(8, 8, 1, -9999999, 9999999);
+                int score = minimax(PLY, PLY, 1, -9999999, 9999999, &line);
             
-                printf("Making move: ");
-                print_move(bestMoveWhite);
+                printf("Principal line: %d\n", score);
+                for(int i=0; i< line.cmove; i++) {
+                    print_move(line.argmove[i],0);
+                    printf(" ");
+                }
+                printf("\nMaking move: ");
+                print_move(bestMoveWhite,1);
 
                 make_move(bestMoveWhite, all_moves);
                 if(is_square_attacked(king_squares[0], black) && !areThereAnyLegalMoves()) {
                     printf("0-1\n");
                     playOn = 0;
                 }
-                //print_board();
             }
+            int timeElapsed = getTimeInMs() - start_time;
+            printf("Move time: %.2fs\n", timeElapsed/1000.0);
         }
+        int gameTime = getTimeInMs() - gameStart;
+        printf("Game time: %.2fs\n", gameTime/1000.0);
     }
     return 0;
 }
