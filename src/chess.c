@@ -6,6 +6,8 @@
 
 int bestMoveWhite = 0;
 int bestMoveBlack = 0;
+int EVALS = 0;
+const int SIZE_OF_INT = sizeof(int);
 
 //FEN debuging positions
 char start_position[] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -91,6 +93,138 @@ int board[128] = {
     e, e, e, e, e, e, e, e,  o, o, o, o, o, o, o, o,
     P, P, P, P, P, P, P, P,  o, o, o, o, o, o, o, o,
     R, N, B, Q, K, B, N, R,  o, o, o, o, o, o, o, o
+};
+
+int white_pawn_table[128] = {
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    50, 50, 50, 50, 50, 50, 50, 50, 0,  0,  0,  0,  0,  0,  0,  0,
+    10, 10, 20, 30, 30, 20, 10, 10, 0,  0,  0,  0,  0,  0,  0,  0,
+    5,  5, 10, 25, 25, 10,  5,  5,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0, 20, 20,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    5, -5,-10,  0,  0,-10, -5,  5,  0,  0,  0,  0,  0,  0,  0,  0,
+    5, 10, 10,-20,-20, 10, 10,  5,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+};
+
+int black_pawn_table[128] = {
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    5, 10, 10,-20,-20, 10, 10,  5,  0,  0,  0,  0,  0,  0,  0,  0,
+    5, -5,-10,  0,  0,-10, -5,  5,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0, 20, 20,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    5,  5, 10, 25, 25, 10,  5,  5,  0,  0,  0,  0,  0,  0,  0,  0,
+    10, 10, 20, 30, 30, 20, 10, 10, 0,  0,  0,  0,  0,  0,  0,  0,
+    50, 50, 50, 50, 50, 50, 50, 50, 0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+};
+
+int white_knight_table[128] = {
+    -50,-40,-30,-30,-30,-30,-40,-50, 0,  0,  0,  0,  0,  0,  0,  0,
+    -40,-20,  0,  0,  0,  0,-20,-40, 0,  0,  0,  0,  0,  0,  0,  0,
+    -30,  0, 10, 15, 15, 10,  0,-30, 0,  0,  0,  0,  0,  0,  0,  0,
+    -30,  5, 15, 20, 20, 15,  5,-30, 0,  0,  0,  0,  0,  0,  0,  0,
+    -30,  0, 15, 20, 20, 15,  0,-30, 0,  0,  0,  0,  0,  0,  0,  0,
+    -30,  5, 10, 15, 15, 10,  5,-30, 0,  0,  0,  0,  0,  0,  0,  0,
+    -40,-20,  0,  5,  5,  0,-20,-40, 0,  0,  0,  0,  0,  0,  0,  0,
+    -50,-40,-30,-30,-30,-30,-40,-50, 0,  0,  0,  0,  0,  0,  0,  0
+};
+
+int black_knight_table[128] = {
+    -50,-40,-30,-30,-30,-30,-40,-50, 0,  0,  0,  0,  0,  0,  0,  0,
+    -40,-20,  0,  5,  5,  0,-20,-40, 0,  0,  0,  0,  0,  0,  0,  0,
+    -30,  5, 10, 15, 15, 10,  5,-30, 0,  0,  0,  0,  0,  0,  0,  0,
+    -30,  0, 15, 20, 20, 15,  0,-30, 0,  0,  0,  0,  0,  0,  0,  0,
+    -30,  5, 15, 20, 20, 15,  5,-30, 0,  0,  0,  0,  0,  0,  0,  0,
+    -30,  0, 10, 15, 15, 10,  0,-30, 0,  0,  0,  0,  0,  0,  0,  0,
+    -40,-20,  0,  0,  0,  0,-20,-40, 0,  0,  0,  0,  0,  0,  0,  0,
+    -50,-40,-30,-30,-30,-30,-40,-50, 0,  0,  0,  0,  0,  0,  0,  0
+};
+
+int white_bishop_table[128] = {
+    -20,-10,-10,-10,-10,-10,-10,-20, 0,  0,  0,  0,  0,  0,  0,  0,
+    -10,  0,  0,  0,  0,  0,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
+    -10,  0,  5, 10, 10,  5,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
+    -10,  5,  5, 10, 10,  5,  5,-10, 0,  0,  0,  0,  0,  0,  0,  0,
+    -10,  0, 10, 10, 10, 10,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
+    -10, 10, 10, 10, 10, 10, 10,-10, 0,  0,  0,  0,  0,  0,  0,  0,
+    -10,  5,  0,  0,  0,  0,  5,-10, 0,  0,  0,  0,  0,  0,  0,  0,
+    -20,-10,-10,-10,-10,-10,-10,-20, 0,  0,  0,  0,  0,  0,  0,  0
+};
+
+int black_bishop_table[128] = {
+    -20,-10,-10,-10,-10,-10,-10,-20, 0,  0,  0,  0,  0,  0,  0,  0,
+    -10,  5,  0,  0,  0,  0,  5,-10, 0,  0,  0,  0,  0,  0,  0,  0,
+    -10, 10, 10, 10, 10, 10, 10,-10, 0,  0,  0,  0,  0,  0,  0,  0,
+    -10,  0, 10, 10, 10, 10,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
+    -10,  5,  5, 10, 10,  5,  5,-10, 0,  0,  0,  0,  0,  0,  0,  0,
+    -10,  0,  5, 10, 10,  5,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
+    -10,  0,  0,  0,  0,  0,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
+    -20,-10,-10,-10,-10,-10,-10,-20, 0,  0,  0,  0,  0,  0,  0,  0
+};
+
+int white_rook_table[128] = {
+     0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0,
+     5, 10, 10, 10, 10, 10, 10,  5, 0,  0,  0,  0,  0,  0,  0,  0,
+    -5,  0,  0,  0,  0,  0,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0,
+    -5,  0,  0,  0,  0,  0,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0,
+    -5,  0,  0,  0,  0,  0,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0,
+    -5,  0,  0,  0,  0,  0,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0,
+    -5,  0,  0,  0,  0,  0,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0,
+     0,  0,  0,  5,  5,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0
+};
+
+int black_rook_table[128] = {
+     0,  0,  0,  5,  5,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0
+    -5,  0,  0,  0,  0,  0,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0, 
+    -5,  0,  0,  0,  0,  0,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0,
+    -5,  0,  0,  0,  0,  0,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0,
+    -5,  0,  0,  0,  0,  0,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0,
+    -5,  0,  0,  0,  0,  0,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0,
+     5, 10, 10, 10, 10, 10, 10,  5, 0,  0,  0,  0,  0,  0,  0,  0,
+     0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0,
+};
+
+int white_queen_table[128] = {
+    -20,-10,-10, -5, -5,-10,-10,-20,0,  0,  0,  0,  0,  0,  0,  0,
+    -10,  0,  0,  0,  0,  0,  0,-10,0,  0,  0,  0,  0,  0,  0,  0,
+    -10,  0,  5,  5,  5,  5,  0,-10,0,  0,  0,  0,  0,  0,  0,  0,
+     -5,  0,  5,  5,  5,  5,  0, -5,0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  5,  5,  5,  5,  0, -5,0,  0,  0,  0,  0,  0,  0,  0,
+    -10,  5,  5,  5,  5,  5,  0,-10,0,  0,  0,  0,  0,  0,  0,  0,
+    -10,  0,  5,  0,  0,  0,  0,-10,0,  0,  0,  0,  0,  0,  0,  0,
+    -20,-10,-10, -5, -5,-10,-10,-20,0,  0,  0,  0,  0,  0,  0,  0
+};
+
+int black_queen_table[128] = {
+    -20,-10,-10, -5, -5,-10,-10,-20, 0,  0,  0,  0,  0,  0,  0,  0,
+    -10,  0,  5,  0,  0,  0,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
+    -10,  5,  5,  5,  5,  5,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  5,  5,  5,  5,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0,
+     -5,  0,  5,  5,  5,  5,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0,
+    -10,  0,  5,  5,  5,  5,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
+    -10,  0,  0,  0,  0,  0,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
+    -20,-10,-10, -5, -5,-10,-10,-20, 0,  0,  0,  0,  0,  0,  0,  0
+};
+
+int white_king_table[128] = {
+    -30,-40,-40,-50,-50,-40,-40,-30, 0,  0,  0,  0,  0,  0,  0,
+    -30,-40,-40,-50,-50,-40,-40,-30, 0,  0,  0,  0,  0,  0,  0,
+    -30,-40,-40,-50,-50,-40,-40,-30, 0,  0,  0,  0,  0,  0,  0,
+    -30,-40,-40,-50,-50,-40,-40,-30, 0,  0,  0,  0,  0,  0,  0,
+    -20,-30,-30,-40,-40,-30,-30,-20, 0,  0,  0,  0,  0,  0,  0,
+    -10,-20,-20,-20,-20,-20,-20,-10, 0,  0,  0,  0,  0,  0,  0,
+    20, 20,  0,  0,  0,  0, 20, 20,  0,  0,  0,  0,  0,  0,  0,
+    20, 30, 10,  0,  0, 10, 30, 20,  0,  0,  0,  0,  0,  0,  0
+};
+
+int black_king_table[128] = {
+     20, 30, 10,  0,  0, 10, 30, 20,  0,  0,  0,  0,  0,  0,  0,
+     20, 20,  0,  0,  0,  0, 20, 20,  0,  0,  0,  0,  0,  0,  0,
+    -10,-20,-20,-20,-20,-20,-20,-10,  0,  0,  0,  0,  0,  0,  0,
+    -20,-30,-30,-40,-40,-30,-30,-20,  0,  0,  0,  0,  0,  0,  0,
+    -30,-40,-40,-50,-50,-40,-40,-30,  0,  0,  0,  0,  0,  0,  0,
+    -30,-40,-40,-50,-50,-40,-40,-30,  0,  0,  0,  0,  0,  0,  0,
+    -30,-40,-40,-50,-50,-40,-40,-30,  0,  0,  0,  0,  0,  0,  0,
+    -30,-40,-40,-50,-50,-40,-40,-30,  0,  0,  0,  0,  0,  0,  0
 };
 
 //Side to move
@@ -541,7 +675,7 @@ void generate_moves(moves *move_list) {
     move_list->captureCount = 0;
     move_list->noCaptureCount = 0;
 
-    for(int square = 0; square < 128; square ++) {
+    for(int square = 0; square < 120; square ++) {
         if(!(square & 0x88)) {
 
             //White pawn and castling moves
@@ -673,7 +807,7 @@ void generate_moves(moves *move_list) {
 }
 
 int make_move(int move, int capture_flag) {
-
+    EVALS++;
     if(capture_flag == all_moves) {
 
         // Define board state variable copies ((should be in "class" or struct??)
@@ -923,10 +1057,8 @@ void test(int expected, int actual, const char* testname) {
 
 int* count_material (int board[]) {
     int result[2];
-    result[0] = 0;
-    result[1] = 0;
 
-    for(int square = 0; square < 128; square ++) {
+    for(int square = 0; square < 120; square ++) {
         if(!(square & 0x88)) {
             int current_piece = board[square];
             if(current_piece >= P && current_piece <= Q) {
@@ -973,6 +1105,49 @@ int forceKingToCorner(int movingKingSquare, int opponentKingSquare, int opponent
     return opponentKingDistanceFromCentre;
 }
 
+int calculateCenterControl() {
+    int whiteScore = 0;
+    int blackScore = 0;
+
+    for(int i = 0; i<120; i++) {
+        int square = board[i];
+        if(square == e) {
+            continue;
+        }
+        if(!(square & 0x88)) {
+            if(square == P) {
+                whiteScore += white_pawn_table[i];
+            } else if(square == p) {
+                blackScore += black_pawn_table[i];
+            } else if(square == N) {
+                whiteScore += white_knight_table[i];
+            } else if(square == n) {
+                blackScore += black_king_table[i];
+            } else if(square == B) {
+                whiteScore += white_bishop_table[i];
+            } else if(square == b) {
+                blackScore += black_bishop_table[i];
+            } else if(square == R) {
+                whiteScore += white_rook_table[i];
+            } else if(square == r) {
+                blackScore += black_rook_table[i];
+            } else if(square == Q) {
+                whiteScore += white_queen_table[i];
+            } else if(square == q) {
+                blackScore += black_queen_table[i];
+            } else if(square == K) {
+                whiteScore += white_king_table[i];
+            } else if(square == k) {
+                blackScore += black_king_table[i];
+            }
+        }
+    }
+    if(side == white) {
+        return whiteScore-blackScore;
+    } 
+    return blackScore-whiteScore;
+}
+
 typedef struct LINE {
     int cmove;              // Number of moves in the line.
     int argmove[10];  // The line.
@@ -980,29 +1155,27 @@ typedef struct LINE {
 
 
 int evaluate(int board[]) {
-
-    int whiteEval = 0;
-    int blackEval = 0;
-
     int* material = count_material(board);
 
-    whiteEval += material[0];
-    blackEval += material[1];
+    int whiteEval = material[0];
+    int blackEval = material[1];
 
-    int endgameEval = 0; //forceKingToCorner(king_squares[side], king_squares[!side], 1);
+    int centerControl = calculateCenterControl();
+    //int endgameEval = 0; //forceKingToCorner(king_squares[side], king_squares[!side], 1);
 
-    int result =  (side == white) ? whiteEval - blackEval : blackEval - whiteEval;
-
-    result = (side == white) ? result+endgameEval : result-endgameEval;
-
-    return result;
+    return  (side == white) ? whiteEval - blackEval + centerControl : blackEval - whiteEval + centerControl;
 }
 
 void print_move(int move, int newLine) {
+    int isMoveCapture = get_move_capture(move);
+    char* capture = "";
+    if(isMoveCapture) {
+        capture = "x";
+    }
     if(newLine) {
-        printf("%s%s\n", square_to_coords[get_move_source(move)], square_to_coords[get_move_target(move)]);
+        printf("%s%s%s\n", square_to_coords[get_move_source(move)], capture, square_to_coords[get_move_target(move)]);
     } else {
-        printf("%s%s", square_to_coords[get_move_source(move)], square_to_coords[get_move_target(move)]);
+        printf("%s%s%s", square_to_coords[get_move_source(move)], capture, square_to_coords[get_move_target(move)]);
     }
 }
 
@@ -1010,7 +1183,6 @@ int areThereAnyLegalMoves() {
     moves move_list[1];
     generate_moves(move_list);
     int size = move_list->count;
-    int foundLegalMove = 0;
     for(int move_count = 0; move_count < size; move_count++) {
         //Make move
         int board_copy[128];
@@ -1027,8 +1199,8 @@ int areThereAnyLegalMoves() {
         castle_copy = castle;
 
         int move = move_list->moves[move_count];
-        if(make_move(move, all_moves)) {
-            foundLegalMove = 1;
+        if(!make_move(move, all_moves)) {
+            continue;
         }
 
         //Restore board
@@ -1038,15 +1210,71 @@ int areThereAnyLegalMoves() {
         enpassant = enpassant_copy;
         castle = castle_copy;
 
+        return 1;
+
     }
-    return foundLegalMove;
+    return 0;
 }
+
+int QuiescenceSearch (int alpha, int beta) {
+    int eval = evaluate(board);
+    if (eval >= beta) {
+        return beta;
+    }
+    if (eval > alpha) {
+        alpha = eval;
+    }
+
+    moves move_list[1];
+    generate_moves(move_list);
+    int size = move_list->count;
+
+    for (int i = 0; i < size; i++) {
+        //Make move
+        int board_copy[128];
+        int side_copy;
+        int enpassant_copy;
+        int castle_copy;
+        int king_squares_copy[2];
+
+        //Copy
+        memcpy(board_copy, board, 512);
+        memcpy(king_squares_copy, king_squares, 8);
+        side_copy = side;
+        enpassant_copy = enpassant;
+        castle_copy = castle;
+
+        int move = move_list->moves[size];
+        
+        if(!make_move(move, only_captures)) {
+            continue;
+        }
+        eval = -QuiescenceSearch (-beta, -alpha);
+        //Restore board
+        memcpy(board, board_copy, 512);
+        memcpy(king_squares, king_squares_copy, 8);
+        side = side_copy;
+        enpassant = enpassant_copy;
+        castle = castle_copy;
+
+        if (eval >= beta) {
+            return beta;
+        }
+        if (eval > alpha) {
+            alpha = eval;
+        }
+    }
+
+			return alpha;
+		}
 
 int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int beta, LINE * pline) {
     LINE line;
+    line.cmove = 0;
     if(depth == 0) {
         pline->cmove = 0;
-        int score = evaluate(board);
+        //int score = evaluate(board);
+        int score = QuiescenceSearch (alpha, beta);
         return score;
     } 
     moves move_list[1];
@@ -1074,21 +1302,21 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
             castle_copy = castle;
 
             int move = move_list->moves[move_count];
+            
             if(!make_move(move, all_moves)) {
                 continue;
-            } else {
-                foundLegalMove = 1;
-            }
+            } 
+            foundLegalMove = 1;
             int eval = minimax(initialDepth, depth -1, 0, alpha, beta, &line);
             if(eval > maxEval) {
                 if(depth == initialDepth) {
                     bestMoveWhite = move;
                 }
                 maxEval = eval;
-            }
+            } 
             if(eval > alpha) {
                 pline->argmove[0] = move;
-                memcpy(pline->argmove + 1, line.argmove, line.cmove * sizeof(int));
+                memcpy(pline->argmove + 1, line.argmove, line.cmove * SIZE_OF_INT);
                 pline->cmove = line.cmove + 1;
                 alpha = eval;
             }
@@ -1135,20 +1363,16 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
             
             if(!make_move(move, all_moves)) {
                 continue;
-            } else {
-                foundLegalMove = 1;
-            }
+            } 
+            foundLegalMove = 1;
             int eval = minimax(initialDepth, depth -1, 1, alpha, beta, &line);
             if(eval < minEval) {
-                pline->argmove[0] = move;
-                memcpy(pline->argmove + 1, line.argmove, line.cmove * sizeof(int));
-                pline->cmove = line.cmove + 1;
-                if(depth == initialDepth) {
-                    bestMoveBlack = move;
-                }
                 minEval = eval;
             }
             if(eval < beta) {
+                pline->argmove[0] = move;
+                memcpy(pline->argmove + 1, line.argmove, line.cmove * SIZE_OF_INT);
+                pline->cmove = line.cmove + 1;
                 beta = eval;
             }
             if(beta <= alpha) {
@@ -1170,6 +1394,62 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
         }  
         return minEval;
     }
+}
+
+int playGame(int level, char *fen) {
+    if(fen) {
+        parse_fen(fen);
+    }
+    //int gameStart = getTimeInMs();
+
+    int playOn = 1;
+    int PLY = level*2;
+    int result = 0;
+    while(playOn) {
+        playOn = 0;
+
+        //Init start time
+        int start_time = getTimeInMs();
+        printf("**********************\n");
+        LINE line;
+
+        float score = minimax(PLY, PLY, 1, -9999999, 9999999, &line) / 100.0;
+
+        printf("Principal line: %.2f\n", score);
+        for(int i=0; i< line.cmove; i++) {
+            //printf("%d\n", line.argmove[i]);
+            print_move(line.argmove[i],0);
+            printf(" ");
+        }
+        printf("\nMaking move:    ");
+        print_move(bestMoveWhite,1);
+        //printf("Move code = %d\n", bestMoveWhite);
+
+        int timeElapsed = getTimeInMs() - start_time;
+        printf("Move time:      %.2fs\n", timeElapsed/1000.0);
+        printf("Nodes:          %d\n", EVALS);
+        printf("Nodes/sec:      %.0f\n", EVALS/(timeElapsed/1000.0));
+        printf("**********************\n");
+        EVALS = 0;
+        if(bestMoveWhite) {
+            make_move(bestMoveWhite, all_moves);
+            if(is_square_attacked(king_squares[side], !side) && !areThereAnyLegalMoves()) {
+                if(side == white) {
+                    printf("0-1\n");
+                    result = 2;
+                } else {
+                    printf("1-0\n");
+                    result = 1;
+                }
+                playOn = 0;
+            }
+        } else {
+            playOn = 0;
+        }
+    }
+    return result;
+    //int gameTime = getTimeInMs() - gameStart;
+    //printf("Game time:      %.2fs\n", gameTime/1000.0);
 }
 
 int main(int argc, char** argv) {
@@ -1215,20 +1495,75 @@ int main(int argc, char** argv) {
         test(164075551, perft_test2(5, "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"), "Chessprogramming pos 6, depth 5");
         
         printf("Tests used %dms.\n\n", getTimeInMs()-start_time);
+    } else if(argv[1] && ! strcmp(argv[1], "newGame")) {
+        int level=4;
+        char source[4];
+        char target[4];
+        printf("Welcome to the Pettersen chess engine.\n");
+        printf("Engine level (1-4): ");
+        scanf("%d",&level);
+            
+        parse_fen(start_position);
+
+        
+
+        int res = 0;
+        while(res == 0) {
+            if(side == black) {
+                printf("From square: ");
+                scanf("%s", source);
+                printf("To square: ");
+                scanf("%s", target);
+
+                moves move_list[1];
+                generate_moves(move_list);
+                int size = move_list->count;
+
+                for(int move_count = 0; move_count < size; move_count++) {
+                    int moveEncooded = move_list->moves[move_count];
+                    char *sourceCoord = square_to_coords[get_move_source(moveEncooded)];
+                    char *targetCoord = square_to_coords[get_move_target(moveEncooded)];
+
+                    if(!strcmp(targetCoord, target) && !strcmp(sourceCoord, source)) {
+                        int moveStatus = make_move(moveEncooded, all_moves);
+                        if(!moveStatus) {
+                            printf("Illegal move. Terminating");
+                            break;
+                        } else {
+                            if(is_square_attacked(king_squares[side], !side) && !areThereAnyLegalMoves()) {
+                                if(side == white) {
+                                    printf("0-1\n");
+                                    res = 2;
+                                } else {
+                                    printf("1-0\n");
+                                    res = 1;
+                                }
+                            }
+                        }
+                        break;
+                    } 
+                }
+            } else {
+                res = playGame(level,0);
+            }
+            
+        }
     }
     else {
-        int gameStart = getTimeInMs();
+        playGame(4, start_position);
+
         //parse_fen("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
         //parse_fen(start_position);
         //parse_fen("4k3/4P3/8/8/R7/8/3qPb2/4K3 w - - 0 1");
         //parse_fen("3k4/R6R/8/8/8/8/8/8 w - - 0 1");
+        //parse_fen("R3k3/7R/8/8/8/8/8/8 b - - 0 1"); //Game over, mate
         //parse_fen("4k3/R7/7R/8/8/8/8/1K6 w - - 0 1");
         //parse_fen("3k4/8/8/8/8/7R/R7/3K4 w - - 0 1");
         //parse_fen("r5rk/5p1p/5R2/4B3/8/8/7P/7K w - - 0 1"); //Mate in three
         //parse_fen("7R/r1p1q1pp/3k4/1p1n1Q2/3N4/8/1PP2PPP/2B3K1 w - - 1 0"); //Mate in four
         //parse_fen("Q7/p1p1q1pk/3p2rp/4n3/3bP3/7b/PP3PPK/R1B2R2 b - - 0 1"); //Mate in four
         //parse_fen("7R/r1p1q1pp/3k4/1p1n1Q2/3N4/8/1PP2PPP/2B3K1 w - - 1 0"); //Mate in four
-        parse_fen("6k1/3b3r/1p1p4/p1n2p2/1PPNpP1q/P3Q1p1/1R1RB1P1/5K2 b - - 0 1"); //Mate in five
+        //parse_fen("6k1/3b3r/1p1p4/p1n2p2/1PPNpP1q/P3Q1p1/1R1RB1P1/5K2 b - - 0 1"); //Mate in five - 301.65s
         //parse_fen("r2qkbnr/ppp1pppp/2b5/8/P1B5/1QP1P3/3P1PPP/RNB1K1NR b KQk - 3 10"); //Black should not caputre with queen
         //parse_fen("rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 7 11"); //Mate in seven
         //parse_fen("8/r1r3pk/1N2pp2/3p4/P2QP1qp/1R6/2PB2P1/5RK1 w - - 8 41");
@@ -1236,57 +1571,15 @@ int main(int argc, char** argv) {
         //parse_fen("1k6/8/2Q5/1K6/8/8/8/8 w - - 0 1"); //Avoid stalemate draw
         //parse_fen("8/8/3k4/8/8/3K4/8/3R4 w - - 0 1"); //Rooks vs king
         //parse_fen("8/3KP3/8/8/8/8/6k1/7q b - - 0 1"); //Q vs king and pawn
+        //parse_fen("3n3k/rp4pp/1p5r/pPp1pp2/PpPp1p2/3PpPp1/RN2P1P1/QBNR1BK1 b - - 0 1"); 
+        //parse_fen("1Bb3BN/R2Pk2r/1Q5B/4q2R/2bN4/4Q1BK/1p6/1bq1R1rb w - - 0 1"); //Hard mate in 1
         
         //parse_fen("3r1rk1/pbb4p/1q3ppP/1B1P4/4PR2/5N2/1Q3PP1/2R2K2 w - - 0 1");
         //parse_fen("8/8/8/8/3b4/4k3/2B2p2/5K1R w - - 10 65");
         //print_board();
 
-        int playOn = 1;
-        int PLY = 8;
-        while(playOn) {
-            //Init start time
-            int start_time = getTimeInMs();
-            printf("**********************\n");
-            LINE line;
-            if(side == white) {
-                int score = minimax(PLY, PLY, 1, -9999999, 9999999, &line);
-
-                printf("Principal line: %d\n", score);
-                for(int i=0; i< line.cmove; i++) {
-                    print_move(line.argmove[i],0);
-                    printf(" ");
-                }
-                printf("\nMaking move: ");
-                print_move(bestMoveWhite,1);
-
-                make_move(bestMoveWhite, all_moves);
-                if(is_square_attacked(king_squares[1], white) && !areThereAnyLegalMoves()) {
-                    printf("1-0\n");
-                    playOn = 0;
-                }
-                //print_board();
-            } else {
-                int score = minimax(PLY, PLY, 1, -9999999, 9999999, &line);
-            
-                printf("Principal line: %d\n", score);
-                for(int i=0; i< line.cmove; i++) {
-                    print_move(line.argmove[i],0);
-                    printf(" ");
-                }
-                printf("\nMaking move: ");
-                print_move(bestMoveWhite,1);
-
-                make_move(bestMoveWhite, all_moves);
-                if(is_square_attacked(king_squares[0], black) && !areThereAnyLegalMoves()) {
-                    printf("0-1\n");
-                    playOn = 0;
-                }
-            }
-            int timeElapsed = getTimeInMs() - start_time;
-            printf("Move time: %.2fs\n", timeElapsed/1000.0);
-        }
-        int gameTime = getTimeInMs() - gameStart;
-        printf("Game time: %.2fs\n", gameTime/1000.0);
+        //parse_fen("r5k1/1p1bbppp/8/3p4/1P1P4/1p3N2/1PP2PPP/2B1K2R w K - 0 1"); //Good quiescene position, avoid c2c4 and loss of rook on c1, 8 ply
+        //parse_fen("2rqk1r1/pp2bpBp/2b1p3/3p4/4n3/1N1QPN2/PPP2PPP/R3K2R w KQ - 0 1");
     }
     return 0;
 }
