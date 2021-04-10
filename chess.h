@@ -1,0 +1,1 @@
+int perft_test2(int depth, char *fen);
