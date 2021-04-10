@@ -1505,8 +1505,6 @@ int main(int argc, char** argv) {
             
         parse_fen(start_position);
 
-        
-
         int res = 0;
         while(res == 0) {
             if(side == black) {
@@ -1523,6 +1521,15 @@ int main(int argc, char** argv) {
                     int moveEncooded = move_list->moves[move_count];
                     char *sourceCoord = square_to_coords[get_move_source(moveEncooded)];
                     char *targetCoord = square_to_coords[get_move_target(moveEncooded)];
+                    int promotedPiece = get_move_piece(moveEncooded);
+                    if(promotedPiece) {
+                        int foundPiece = char_pieces[target[2]];
+                        if(foundPiece != promotedPiece) {
+                            continue;
+                        } else {
+                            target[strlen(target)-1] = 0;
+                        }
+                    }
 
                     if(!strcmp(targetCoord, target) && !strcmp(sourceCoord, source)) {
                         int moveStatus = make_move(moveEncooded, all_moves);
