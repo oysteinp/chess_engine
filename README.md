@@ -1,15 +1,16 @@
 <h1>Chess engine</h1>
 
-This is simple chess engine project developed in C. 
+This is simple chess engine developed in C. 
 
 <h2>Board</h2>
 The state of the board is represented in a "0x88 chess board representation". 
 
     int board[128];
-The benefit from this approach for the simplification of some important calculations due to bitwise operators.
+The benefit from this approach is the simplification of some important calculations due to bitwise operators.
 
 <h2>Evaluation</h2>
 The engine uses a very simple position evaluation. Positive evaluation means that white has the better positioin, while negative means that black has the upper hand.
+
 1. Material. The difference in material between white and black. 
 2. Piece placements. Each piece has its own table with a score for each position on the board. For instance does the knights prefer central positions while a corner placement is the absolute worst.
 
