@@ -5,9 +5,10 @@
 #include "chess.h"
 
 int bestMoveWhite = 0;
-int bestMoveBlack = 0;
 int EVALS = 0;
 const int SIZE_OF_INT = sizeof(int);
+const int BOARD_SIZE = 120;
+const int BOARD_MEM_SIZE = BOARD_SIZE * SIZE_OF_INT;
 
 //FEN debuging positions
 char start_position[] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -84,7 +85,7 @@ int promoted_pieces[] = {
 char *unicode_pieces[] = {".", "♟︎", "♞", "♝", "♜", "♛", "♚", "♙", "♘", "♗", "♖", "♕", "♔" };
 
 //Chess board representation
-int board[128] = {
+int board[BOARD_SIZE] = {
     r, n, b, q, k, b, n, r,  o, o, o, o, o, o, o, o,
     p, p, p, p, p, p, p, p,  o, o, o, o, o, o, o, o,
     e, e, e, e, e, e, e, e,  o, o, o, o, o, o, o, o,
@@ -92,10 +93,10 @@ int board[128] = {
     e, e, e, e, e, e, e, e,  o, o, o, o, o, o, o, o,
     e, e, e, e, e, e, e, e,  o, o, o, o, o, o, o, o,
     P, P, P, P, P, P, P, P,  o, o, o, o, o, o, o, o,
-    R, N, B, Q, K, B, N, R,  o, o, o, o, o, o, o, o
+    R, N, B, Q, K, B, N, R
 };
 
-int white_pawn_table[128] = {
+int white_pawn_table[BOARD_SIZE] = {
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
     50, 50, 50, 50, 50, 50, 50, 50, 0,  0,  0,  0,  0,  0,  0,  0,
     10, 10, 20, 30, 30, 20, 10, 10, 0,  0,  0,  0,  0,  0,  0,  0,
@@ -103,10 +104,10 @@ int white_pawn_table[128] = {
     0,  0,  0, 20, 20,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
     5, -5,-10,  0,  0,-10, -5,  5,  0,  0,  0,  0,  0,  0,  0,  0,
     5, 10, 10,-20,-20, 10, 10,  5,  0,  0,  0,  0,  0,  0,  0,  0,
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+    0,  0,  0,  0,  0,  0,  0,  0
 };
 
-int black_pawn_table[128] = {
+int black_pawn_table[BOARD_SIZE] = {
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
     5, 10, 10,-20,-20, 10, 10,  5,  0,  0,  0,  0,  0,  0,  0,  0,
     5, -5,-10,  0,  0,-10, -5,  5,  0,  0,  0,  0,  0,  0,  0,  0,
@@ -114,10 +115,10 @@ int black_pawn_table[128] = {
     5,  5, 10, 25, 25, 10,  5,  5,  0,  0,  0,  0,  0,  0,  0,  0,
     10, 10, 20, 30, 30, 20, 10, 10, 0,  0,  0,  0,  0,  0,  0,  0,
     50, 50, 50, 50, 50, 50, 50, 50, 0,  0,  0,  0,  0,  0,  0,  0,
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+    0,  0,  0,  0,  0,  0,  0,  0
 };
 
-int white_knight_table[128] = {
+int white_knight_table[BOARD_SIZE] = {
     -50,-40,-30,-30,-30,-30,-40,-50, 0,  0,  0,  0,  0,  0,  0,  0,
     -40,-20,  0,  0,  0,  0,-20,-40, 0,  0,  0,  0,  0,  0,  0,  0,
     -30,  0, 10, 15, 15, 10,  0,-30, 0,  0,  0,  0,  0,  0,  0,  0,
@@ -125,10 +126,10 @@ int white_knight_table[128] = {
     -30,  0, 15, 20, 20, 15,  0,-30, 0,  0,  0,  0,  0,  0,  0,  0,
     -30,  5, 10, 15, 15, 10,  5,-30, 0,  0,  0,  0,  0,  0,  0,  0,
     -40,-20,  0,  5,  5,  0,-20,-40, 0,  0,  0,  0,  0,  0,  0,  0,
-    -50,-40,-30,-30,-30,-30,-40,-50, 0,  0,  0,  0,  0,  0,  0,  0
+    -50,-40,-30,-30,-30,-30,-40,-50
 };
 
-int black_knight_table[128] = {
+int black_knight_table[BOARD_SIZE] = {
     -50,-40,-30,-30,-30,-30,-40,-50, 0,  0,  0,  0,  0,  0,  0,  0,
     -40,-20,  0,  5,  5,  0,-20,-40, 0,  0,  0,  0,  0,  0,  0,  0,
     -30,  5, 10, 15, 15, 10,  5,-30, 0,  0,  0,  0,  0,  0,  0,  0,
@@ -136,10 +137,10 @@ int black_knight_table[128] = {
     -30,  5, 15, 20, 20, 15,  5,-30, 0,  0,  0,  0,  0,  0,  0,  0,
     -30,  0, 10, 15, 15, 10,  0,-30, 0,  0,  0,  0,  0,  0,  0,  0,
     -40,-20,  0,  0,  0,  0,-20,-40, 0,  0,  0,  0,  0,  0,  0,  0,
-    -50,-40,-30,-30,-30,-30,-40,-50, 0,  0,  0,  0,  0,  0,  0,  0
+    -50,-40,-30,-30,-30,-30,-40,-50
 };
 
-int white_bishop_table[128] = {
+int white_bishop_table[BOARD_SIZE] = {
     -20,-10,-10,-10,-10,-10,-10,-20, 0,  0,  0,  0,  0,  0,  0,  0,
     -10,  0,  0,  0,  0,  0,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
     -10,  0,  5, 10, 10,  5,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
@@ -147,10 +148,10 @@ int white_bishop_table[128] = {
     -10,  0, 10, 10, 10, 10,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
     -10, 10, 10, 10, 10, 10, 10,-10, 0,  0,  0,  0,  0,  0,  0,  0,
     -10,  5,  0,  0,  0,  0,  5,-10, 0,  0,  0,  0,  0,  0,  0,  0,
-    -20,-10,-10,-10,-10,-10,-10,-20, 0,  0,  0,  0,  0,  0,  0,  0
+    -20,-10,-10,-10,-10,-10,-10,-20
 };
 
-int black_bishop_table[128] = {
+int black_bishop_table[BOARD_SIZE] = {
     -20,-10,-10,-10,-10,-10,-10,-20, 0,  0,  0,  0,  0,  0,  0,  0,
     -10,  5,  0,  0,  0,  0,  5,-10, 0,  0,  0,  0,  0,  0,  0,  0,
     -10, 10, 10, 10, 10, 10, 10,-10, 0,  0,  0,  0,  0,  0,  0,  0,
@@ -158,10 +159,10 @@ int black_bishop_table[128] = {
     -10,  5,  5, 10, 10,  5,  5,-10, 0,  0,  0,  0,  0,  0,  0,  0,
     -10,  0,  5, 10, 10,  5,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
     -10,  0,  0,  0,  0,  0,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
-    -20,-10,-10,-10,-10,-10,-10,-20, 0,  0,  0,  0,  0,  0,  0,  0
+    -20,-10,-10,-10,-10,-10,-10,-20
 };
 
-int white_rook_table[128] = {
+int white_rook_table[BOARD_SIZE] = {
      0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0,
      5, 10, 10, 10, 10, 10, 10,  5, 0,  0,  0,  0,  0,  0,  0,  0,
     -5,  0,  0,  0,  0,  0,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0,
@@ -169,10 +170,10 @@ int white_rook_table[128] = {
     -5,  0,  0,  0,  0,  0,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0,
     -5,  0,  0,  0,  0,  0,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0,
     -5,  0,  0,  0,  0,  0,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0,
-     0,  0,  0,  5,  5,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0
+     0,  0,  0,  5,  5,  0,  0,  0
 };
 
-int black_rook_table[128] = {
+int black_rook_table[BOARD_SIZE] = {
      0,  0,  0,  5,  5,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0
     -5,  0,  0,  0,  0,  0,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0, 
     -5,  0,  0,  0,  0,  0,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0,
@@ -180,10 +181,10 @@ int black_rook_table[128] = {
     -5,  0,  0,  0,  0,  0,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0,
     -5,  0,  0,  0,  0,  0,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0,
      5, 10, 10, 10, 10, 10, 10,  5, 0,  0,  0,  0,  0,  0,  0,  0,
-     0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0,
+     0,  0,  0,  0,  0,  0,  0,  0
 };
 
-int white_queen_table[128] = {
+int white_queen_table[BOARD_SIZE] = {
     -20,-10,-10, -5, -5,-10,-10,-20,0,  0,  0,  0,  0,  0,  0,  0,
     -10,  0,  0,  0,  0,  0,  0,-10,0,  0,  0,  0,  0,  0,  0,  0,
     -10,  0,  5,  5,  5,  5,  0,-10,0,  0,  0,  0,  0,  0,  0,  0,
@@ -191,10 +192,10 @@ int white_queen_table[128] = {
       0,  0,  5,  5,  5,  5,  0, -5,0,  0,  0,  0,  0,  0,  0,  0,
     -10,  5,  5,  5,  5,  5,  0,-10,0,  0,  0,  0,  0,  0,  0,  0,
     -10,  0,  5,  0,  0,  0,  0,-10,0,  0,  0,  0,  0,  0,  0,  0,
-    -20,-10,-10, -5, -5,-10,-10,-20,0,  0,  0,  0,  0,  0,  0,  0
+    -20,-10,-10, -5, -5,-10,-10,-20
 };
 
-int black_queen_table[128] = {
+int black_queen_table[BOARD_SIZE] = {
     -20,-10,-10, -5, -5,-10,-10,-20, 0,  0,  0,  0,  0,  0,  0,  0,
     -10,  0,  5,  0,  0,  0,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
     -10,  5,  5,  5,  5,  5,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
@@ -202,10 +203,10 @@ int black_queen_table[128] = {
      -5,  0,  5,  5,  5,  5,  0, -5, 0,  0,  0,  0,  0,  0,  0,  0,
     -10,  0,  5,  5,  5,  5,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
     -10,  0,  0,  0,  0,  0,  0,-10, 0,  0,  0,  0,  0,  0,  0,  0,
-    -20,-10,-10, -5, -5,-10,-10,-20, 0,  0,  0,  0,  0,  0,  0,  0
+    -20,-10,-10, -5, -5,-10,-10,-20
 };
 
-int white_king_table[128] = {
+int white_king_table[BOARD_SIZE] = {
     -30,-40,-40,-50,-50,-40,-40,-30, 0,  0,  0,  0,  0,  0,  0,
     -30,-40,-40,-50,-50,-40,-40,-30, 0,  0,  0,  0,  0,  0,  0,
     -30,-40,-40,-50,-50,-40,-40,-30, 0,  0,  0,  0,  0,  0,  0,
@@ -213,10 +214,10 @@ int white_king_table[128] = {
     -20,-30,-30,-40,-40,-30,-30,-20, 0,  0,  0,  0,  0,  0,  0,
     -10,-20,-20,-20,-20,-20,-20,-10, 0,  0,  0,  0,  0,  0,  0,
     20, 20,  0,  0,  0,  0, 20, 20,  0,  0,  0,  0,  0,  0,  0,
-    20, 30, 10,  0,  0, 10, 30, 20,  0,  0,  0,  0,  0,  0,  0
+    20, 30, 10,  0,  0, 10, 30, 20
 };
 
-int black_king_table[128] = {
+int black_king_table[BOARD_SIZE] = {
      20, 30, 10,  0,  0, 10, 30, 20,  0,  0,  0,  0,  0,  0,  0,
      20, 20,  0,  0,  0,  0, 20, 20,  0,  0,  0,  0,  0,  0,  0,
     -10,-20,-20,-20,-20,-20,-20,-10,  0,  0,  0,  0,  0,  0,  0,
@@ -224,7 +225,7 @@ int black_king_table[128] = {
     -30,-40,-40,-50,-50,-40,-40,-30,  0,  0,  0,  0,  0,  0,  0,
     -30,-40,-40,-50,-50,-40,-40,-30,  0,  0,  0,  0,  0,  0,  0,
     -30,-40,-40,-50,-50,-40,-40,-30,  0,  0,  0,  0,  0,  0,  0,
-    -30,-40,-40,-50,-50,-40,-40,-30,  0,  0,  0,  0,  0,  0,  0
+    -30,-40,-40,-50,-50,-40,-40,-30
 };
 
 //Side to move
@@ -333,8 +334,6 @@ void print_board() {
                 //printf("%c ", asci_pieces[board[square]]);
                 printf("%s ", unicode_pieces[board[square]]);
             }
-
-            
         }
         printf("\n");
     }
@@ -811,14 +810,14 @@ int make_move(int move, int capture_flag) {
     if(capture_flag == all_moves) {
 
         // Define board state variable copies ((should be in "class" or struct??)
-        int board_copy[128];
+        int board_copy[BOARD_SIZE];
         int side_copy;
         int enpassant_copy;
         int castle_copy;
         int king_squares_copy[2];
 
         //Copy
-        memcpy(board_copy, board, 512);
+        memcpy(board_copy, board, BOARD_MEM_SIZE);
         memcpy(king_squares_copy, king_squares, 8);
         side_copy = side;
         enpassant_copy = enpassant;
@@ -896,7 +895,7 @@ int make_move(int move, int capture_flag) {
         //king_squares[side]
         if(is_square_attacked(king_squares[side], side ^ 1)) {
             //Restore board
-            memcpy(board, board_copy, 512);
+            memcpy(board, board_copy, BOARD_MEM_SIZE);
             memcpy(king_squares, king_squares_copy, 8);
             side = side_copy;
             enpassant = enpassant_copy;
@@ -941,14 +940,14 @@ void perft(int depth) {
     int size = move_list->count;
     for(int move_count = 0; move_count < size; move_count++) {
          // Define board state variable copies ((should be in "class" or struct??)
-        int board_copy[128];
+        int board_copy[BOARD_SIZE];
         int side_copy;
         int enpassant_copy;
         int castle_copy;
         int king_squares_copy[2];
 
         //Copy
-        memcpy(board_copy, board, 512);
+        memcpy(board_copy, board, BOARD_MEM_SIZE);
         memcpy(king_squares_copy, king_squares, 8);
         side_copy = side;
         enpassant_copy = enpassant;
@@ -962,7 +961,7 @@ void perft(int depth) {
         perft(depth-1);
 
          //Restore board
-        memcpy(board, board_copy, 512);
+        memcpy(board, board_copy, BOARD_MEM_SIZE);
         memcpy(king_squares, king_squares_copy, 8);
         side = side_copy;
         enpassant = enpassant_copy;
@@ -985,14 +984,14 @@ int perft_test(int depth, int debug) {
     int size = move_list->count;
     for(int move_count = 0; move_count < size; move_count++) {
          // Define board state variable copies ((should be in "class" or struct??)
-        int board_copy[128];
+        int board_copy[BOARD_SIZE];
         int side_copy;
         int enpassant_copy;
         int castle_copy;
         int king_squares_copy[2];
 
         //Copy
-        memcpy(board_copy, board, 512);
+        memcpy(board_copy, board, BOARD_MEM_SIZE);
         memcpy(king_squares_copy, king_squares, 8);
         side_copy = side;
         enpassant_copy = enpassant;
@@ -1012,7 +1011,7 @@ int perft_test(int depth, int debug) {
         long old_nodes = nodes - total_nodes;
 
          //Restore board
-        memcpy(board, board_copy, 512);
+        memcpy(board, board_copy, BOARD_MEM_SIZE);
         memcpy(king_squares, king_squares_copy, 8);
         side = side_copy;
         enpassant = enpassant_copy;
@@ -1055,16 +1054,15 @@ void test(int expected, int actual, const char* testname) {
     }
 }
 
-int* count_material (int board[]) {
-    int result[2];
-
+int count_material (int board[]) {
+    int result = 0;
     for(int square = 0; square < 120; square ++) {
         if(!(square & 0x88)) {
             int current_piece = board[square];
             if(current_piece >= P && current_piece <= Q) {
-                result[0] += piece_values[current_piece];
+                result += piece_values[current_piece];
             } else if (current_piece >= p && current_piece <= q){
-                result[1] += piece_values[current_piece];
+                result -= piece_values[current_piece];
             }
         }
     }
@@ -1109,7 +1107,7 @@ int calculateCenterControl() {
     int whiteScore = 0;
     int blackScore = 0;
 
-    for(int i = 0; i<120; i++) {
+    for(int i = 0; i<BOARD_SIZE; i++) {
         int square = board[i];
         if(square == e) {
             continue;
@@ -1155,15 +1153,12 @@ typedef struct LINE {
 
 
 int evaluate(int board[]) {
-    int* material = count_material(board);
-
-    int whiteEval = material[0];
-    int blackEval = material[1];
+    int material = count_material(board);
 
     int centerControl = calculateCenterControl();
     //int endgameEval = 0; //forceKingToCorner(king_squares[side], king_squares[!side], 1);
 
-    return  (side == white) ? whiteEval - blackEval + centerControl : blackEval - whiteEval + centerControl;
+    return  material + centerControl;
 }
 
 void print_move(int move, int newLine) {
@@ -1185,14 +1180,14 @@ int areThereAnyLegalMoves() {
     int size = move_list->count;
     for(int move_count = 0; move_count < size; move_count++) {
         //Make move
-        int board_copy[128];
+        int board_copy[BOARD_SIZE];
         int side_copy;
         int enpassant_copy;
         int castle_copy;
         int king_squares_copy[2];
 
         //Copy
-        memcpy(board_copy, board, 512);
+        memcpy(board_copy, board, BOARD_MEM_SIZE);
         memcpy(king_squares_copy, king_squares, 8);
         side_copy = side;
         enpassant_copy = enpassant;
@@ -1204,14 +1199,13 @@ int areThereAnyLegalMoves() {
         }
 
         //Restore board
-        memcpy(board, board_copy, 512);
+        memcpy(board, board_copy, BOARD_MEM_SIZE);
         memcpy(king_squares, king_squares_copy, 8);
         side = side_copy;
         enpassant = enpassant_copy;
         castle = castle_copy;
 
         return 1;
-
     }
     return 0;
 }
@@ -1231,14 +1225,14 @@ int QuiescenceSearch (int alpha, int beta) {
 
     for (int i = 0; i < size; i++) {
         //Make move
-        int board_copy[128];
+        int board_copy[BOARD_SIZE];
         int side_copy;
         int enpassant_copy;
         int castle_copy;
         int king_squares_copy[2];
 
         //Copy
-        memcpy(board_copy, board, 512);
+        memcpy(board_copy, board, BOARD_MEM_SIZE);
         memcpy(king_squares_copy, king_squares, 8);
         side_copy = side;
         enpassant_copy = enpassant;
@@ -1251,7 +1245,7 @@ int QuiescenceSearch (int alpha, int beta) {
         }
         eval = -QuiescenceSearch (-beta, -alpha);
         //Restore board
-        memcpy(board, board_copy, 512);
+        memcpy(board, board_copy, BOARD_MEM_SIZE);
         memcpy(king_squares, king_squares_copy, 8);
         side = side_copy;
         enpassant = enpassant_copy;
@@ -1288,14 +1282,14 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
         int foundLegalMove = 0;
         for(int move_count = 0; move_count < size; move_count++) {
             //Make move
-            int board_copy[128];
+            int board_copy[BOARD_SIZE];
             int side_copy;
             int enpassant_copy;
             int castle_copy;
             int king_squares_copy[2];
 
             //Copy
-            memcpy(board_copy, board, 512);
+            memcpy(board_copy, board, BOARD_MEM_SIZE);
             memcpy(king_squares_copy, king_squares, 8);
             side_copy = side;
             enpassant_copy = enpassant;
@@ -1325,7 +1319,7 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
             }
 
             //Restore board
-            memcpy(board, board_copy, 512);
+            memcpy(board, board_copy, BOARD_MEM_SIZE);
             memcpy(king_squares, king_squares_copy, 8);
             side = side_copy;
             enpassant = enpassant_copy;
@@ -1346,14 +1340,14 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
         int foundLegalMove = 0;
         for(int move_count = 0; move_count < size; move_count++) {
             //Make move
-            int board_copy[128];
+            int board_copy[BOARD_SIZE];
             int side_copy;
             int enpassant_copy;
             int castle_copy;
             int king_squares_copy[2];
 
             //Copy
-            memcpy(board_copy, board, 512);
+            memcpy(board_copy, board, BOARD_MEM_SIZE);
             memcpy(king_squares_copy, king_squares, 8);
             side_copy = side;
             enpassant_copy = enpassant;
@@ -1380,7 +1374,7 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
             }
 
             //Restore board
-            memcpy(board, board_copy, 512);
+            memcpy(board, board_copy, BOARD_MEM_SIZE);
             memcpy(king_squares, king_squares_copy, 8);
             side = side_copy;
             enpassant = enpassant_copy;
@@ -1504,6 +1498,7 @@ int main(int argc, char** argv) {
         scanf("%d",&level);
             
         parse_fen(start_position);
+        //parse_fen("8/1pp5/3k4/1P1P1p2/1P1R1PPp/8/6P1/1r3K2 w - - 1 34");
 
         int res = 0;
         while(res == 0) {
@@ -1558,6 +1553,10 @@ int main(int argc, char** argv) {
     }
     else {
         playGame(4, start_position);
+        //playGame(1, "r1b1r1k1/ppb2ppp/8/8/3n3q/3B4/PPPN1PPn/R1BQ2KR w - - 0 14");
+        //parse_fen("r1b1r1k1/ppb2ppp/8/8/3n4/3B4/PPPN1PPq/R1BQ2K1 w - - 0 15");
+        //int score = evaluate(board);
+        //printf("Score = %d");
 
         //parse_fen("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
         //parse_fen(start_position);
@@ -1568,6 +1567,7 @@ int main(int argc, char** argv) {
         //parse_fen("3k4/8/8/8/8/7R/R7/3K4 w - - 0 1");
         //parse_fen("r5rk/5p1p/5R2/4B3/8/8/7P/7K w - - 0 1"); //Mate in three
         //parse_fen("7R/r1p1q1pp/3k4/1p1n1Q2/3N4/8/1PP2PPP/2B3K1 w - - 1 0"); //Mate in four
+        //playGame(4, "7R/r1p1q1pp/3k4/1p1n1Q2/3N4/8/1PP2PPP/2B3K1 w - - 1 0");
         //parse_fen("Q7/p1p1q1pk/3p2rp/4n3/3bP3/7b/PP3PPK/R1B2R2 b - - 0 1"); //Mate in four
         //parse_fen("7R/r1p1q1pp/3k4/1p1n1Q2/3N4/8/1PP2PPP/2B3K1 w - - 1 0"); //Mate in four
         //parse_fen("6k1/3b3r/1p1p4/p1n2p2/1PPNpP1q/P3Q1p1/1R1RB1P1/5K2 b - - 0 1"); //Mate in five - 301.65s
