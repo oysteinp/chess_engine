@@ -617,52 +617,38 @@ void generate_moves_for_sliding_piece(moves *move_list, int square, int side, in
     }
 }
 
-void generate_castling_moves(moves *move_list, int square, int side) {
+void generate_castling_moves(moves *move_list, int side) {
 
-    if(side == white) {
-        //White king castling
-        if (board[square] == K) {
-            //If king side castling is available
-            if(castle & KC) {
-                if(board[f1] == e && board[g1] == e) {
-                    //Make sure king and next square is not under attack
-                    if(!is_square_attacked(e1, black) && !is_square_attacked(f1, black)) {
-                        add_move(move_list, encode_move(e1, g1, 0, 0, 0, 0 ,1));
-                    }
-                }
-            }
-
-            //If queen side castling is available
-            if(castle & QC) {
-                if(board[b1] == e && board[c1] == e && board[d1] == e) {
-                    //Make sure king and next square is not under attack
-                    if(!is_square_attacked(e1, black) && !is_square_attacked(d1, black)) {
-                        add_move(move_list, encode_move(e1, c1, 0, 0, 0, 0 ,1));
-                    }
-                }
+    if(side == white && board[e1] == K) {
+        //Is white king side castling available?
+        if(castle & KC && board[f1] == e && board[g1] == e) {
+            //Make sure king and next square is not under attack
+            if(!is_square_attacked(e1, black) && !is_square_attacked(f1, black)) {
+                add_move(move_list, encode_move(e1, g1, 0, 0, 0, 0 ,1));
             }
         }
-    } else {
-        //Black king castling
-        if (board[square] == k) {
-            //If king side castling is available
-            if(castle & kc) {
-                if(board[f8] == e && board[g8] == e) {
-                    //Make sure king and next square is not under attack
-                    if(!is_square_attacked(e8, white) && !is_square_attacked(f8, white)) {
-                        add_move(move_list, encode_move(e8, g8, 0, 0, 0, 0 ,1));
-                    }
-                }
-            }
 
-            //If queen side castling is available
-            if(castle & qc) {
-                if(board[b8] == e && board[c8] == e && board[d8] == e) {
-                    //Make sure king and next square is not under attack
-                    if(!is_square_attacked(e8, white) && !is_square_attacked(d8, white)) {
-                        add_move(move_list, encode_move(e8, c8, 0, 0, 0, 0 ,1));
-                    }
-                }
+        //Is white queen side castling available?
+        if(castle & QC && board[b1] == e && board[c1] == e && board[d1] == e) {
+            //Make sure king and next square is not under attack
+            if(!is_square_attacked(e1, black) && !is_square_attacked(d1, black)) {
+                add_move(move_list, encode_move(e1, c1, 0, 0, 0, 0 ,1));
+            }
+        }
+    } else if(side == black && board[e8] == k) {
+        //Is black king side castling available?
+        if(castle & kc && board[f8] == e && board[g8] == e) {
+            //Make sure king and next square is not under attack
+            if(!is_square_attacked(e8, white) && !is_square_attacked(f8, white)) {
+                add_move(move_list, encode_move(e8, g8, 0, 0, 0, 0 ,1));
+            }
+        }
+
+        //Is black queen side castling available?
+        if(castle & qc && board[b8] == e && board[c8] == e && board[d8] == e) {
+            //Make sure king and next square is not under attack
+            if(!is_square_attacked(e8, white) && !is_square_attacked(d8, white)) {
+                add_move(move_list, encode_move(e8, c8, 0, 0, 0, 0 ,1));
             }
         }
     }
@@ -781,13 +767,14 @@ void generate_moves(moves *move_list) {
                     }
                 }
             }
-            generate_castling_moves(move_list, square, side);
             generate_moves_for_jumping_piece(move_list, square, side, knight_offsets, 8, N, n);
             generate_moves_for_jumping_piece(move_list, square, side, king_offsets, 8, K, k);
             generate_moves_for_sliding_piece(move_list, square, side, bishop_offsets, 4, B, b);
             generate_moves_for_sliding_piece(move_list, square, side, rook_offsets, 4, R, r);
         }
     }
+
+    generate_castling_moves(move_list, side);
 
     //Add moves to same list
     int size = move_list->captureCount;
@@ -1103,7 +1090,7 @@ int forceKingToCorner(int movingKingSquare, int opponentKingSquare, int opponent
     return opponentKingDistanceFromCentre;
 }
 
-int calculateCenterControl() {
+int evaluatePiecePositions() {
     int whiteScore = 0;
     int blackScore = 0;
 
@@ -1155,10 +1142,10 @@ typedef struct LINE {
 int evaluate(int board[]) {
     int material = count_material(board);
 
-    int centerControl = calculateCenterControl();
+    int piecePositions = evaluatePiecePositions();
     //int endgameEval = 0; //forceKingToCorner(king_squares[side], king_squares[!side], 1);
 
-    return  material + centerControl;
+    return  material + piecePositions;
 }
 
 void print_move(int move, int newLine) {
