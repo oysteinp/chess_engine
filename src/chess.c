@@ -6,9 +6,12 @@
 
 int bestMoveWhite = 0;
 int EVALS = 0;
+int CUT_OFFS = 0;
 const int SIZE_OF_INT = sizeof(int);
 const int BOARD_SIZE = 120;
 const int BOARD_MEM_SIZE = BOARD_SIZE * SIZE_OF_INT;
+int MAX_QUIESCENCE_DEPTH = 4;
+
 
 //FEN debuging positions
 char start_position[] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -207,24 +210,24 @@ int black_queen_table[BOARD_SIZE] = {
 };
 
 int white_king_table[BOARD_SIZE] = {
-    -30,-40,-40,-50,-50,-40,-40,-30, 0,  0,  0,  0,  0,  0,  0,
-    -30,-40,-40,-50,-50,-40,-40,-30, 0,  0,  0,  0,  0,  0,  0,
-    -30,-40,-40,-50,-50,-40,-40,-30, 0,  0,  0,  0,  0,  0,  0,
-    -30,-40,-40,-50,-50,-40,-40,-30, 0,  0,  0,  0,  0,  0,  0,
-    -20,-30,-30,-40,-40,-30,-30,-20, 0,  0,  0,  0,  0,  0,  0,
-    -10,-20,-20,-20,-20,-20,-20,-10, 0,  0,  0,  0,  0,  0,  0,
-    20, 20,  0,  0,  0,  0, 20, 20,  0,  0,  0,  0,  0,  0,  0,
+    -30,-40,-40,-50,-50,-40,-40,-30, 0,  0,  0,  0,  0,  0,  0, 0,
+    -30,-40,-40,-50,-50,-40,-40,-30, 0,  0,  0,  0,  0,  0,  0, 0,
+    -30,-40,-40,-50,-50,-40,-40,-30, 0,  0,  0,  0,  0,  0,  0, 0,
+    -30,-40,-40,-50,-50,-40,-40,-30, 0,  0,  0,  0,  0,  0,  0, 0,
+    -20,-30,-30,-40,-40,-30,-30,-20, 0,  0,  0,  0,  0,  0,  0, 0,
+    -10,-20,-20,-20,-20,-20,-20,-10, 0,  0,  0,  0,  0,  0,  0, 0,
+    20, 20,  0,  0,  0,  0, 20, 20,  0,  0,  0,  0,  0,  0,  0, 0,
     20, 30, 10,  0,  0, 10, 30, 20
 };
 
 int black_king_table[BOARD_SIZE] = {
-     20, 30, 10,  0,  0, 10, 30, 20,  0,  0,  0,  0,  0,  0,  0,
-     20, 20,  0,  0,  0,  0, 20, 20,  0,  0,  0,  0,  0,  0,  0,
-    -10,-20,-20,-20,-20,-20,-20,-10,  0,  0,  0,  0,  0,  0,  0,
-    -20,-30,-30,-40,-40,-30,-30,-20,  0,  0,  0,  0,  0,  0,  0,
-    -30,-40,-40,-50,-50,-40,-40,-30,  0,  0,  0,  0,  0,  0,  0,
-    -30,-40,-40,-50,-50,-40,-40,-30,  0,  0,  0,  0,  0,  0,  0,
-    -30,-40,-40,-50,-50,-40,-40,-30,  0,  0,  0,  0,  0,  0,  0,
+     20, 30, 10,  0,  0, 10, 30, 20,  0,  0,  0,  0,  0,  0,  0, 0,
+     20, 20,  0,  0,  0,  0, 20, 20,  0,  0,  0,  0,  0,  0,  0, 0,
+    -10,-20,-20,-20,-20,-20,-20,-10,  0,  0,  0,  0,  0,  0,  0, 0,
+    -20,-30,-30,-40,-40,-30,-30,-20,  0,  0,  0,  0,  0,  0,  0, 0, 
+    -30,-40,-40,-50,-50,-40,-40,-30,  0,  0,  0,  0,  0,  0,  0, 0, 
+    -30,-40,-40,-50,-50,-40,-40,-30,  0,  0,  0,  0,  0,  0,  0, 0,
+    -30,-40,-40,-50,-50,-40,-40,-30,  0,  0,  0,  0,  0,  0,  0, 0,
     -30,-40,-40,-50,-50,-40,-40,-30
 };
 
@@ -479,6 +482,70 @@ void reset_board() {
     enpassant = no_sq;
 }
 
+void print_fen(int board[]) {
+
+    char fen[100];
+    int counter = 0;
+    int empty = 0;
+    for(int rank = 0; rank < 8; rank++) {
+        
+        empty = 0;
+        for(int file = 0; file < 16; file++) {
+            int i = rank * 16 + file;
+            if(i>120) {
+                break;
+            }
+
+            int piece = board[i];
+            
+            if(piece == e) {
+                empty++;
+            } else if(piece != o){
+                if(empty > 0){
+                    fen[counter++] = (empty +'0');;
+                }
+                fen[counter++] = asci_pieces[piece];
+                empty = 0;
+            }
+            if(file == 15) {
+                if(empty > 0){
+                    fen[counter++] = (empty +'0');;
+                }
+            }
+        }
+        if(rank != 7) {
+            fen[counter++] = '/';
+        }
+    }
+    fen[counter++] = ' ';
+    if(side == white) {
+        fen[counter++] = 'w';
+    } else {
+        fen[counter++] = 'b';
+    }
+    fen[counter++] = ' ';
+    if(!(castle & KC) && !(castle & QC) && !(castle & kc) && !(castle & qc)) {
+        fen[counter++] = '-';
+        fen[counter++] = ' ';
+        fen[counter++] = '-';
+    } if(castle & KC) {
+        fen[counter++] = 'K';
+    } if(castle & QC) {
+        fen[counter++] = 'Q';
+    } if(castle & kc) {
+        fen[counter++] = 'k';
+    } if(castle & qc) {
+        fen[counter++] = 'q';
+    }
+    //fen[counter++] = ' ';
+
+   // fen[counter++] = enpassant != no_sq ? *square_to_coords[enpassant] : '-';
+
+    fen[counter++] ='\0';
+    printf("Fen: %s\n",fen);
+    
+}
+
 void parse_fen(char *fen) {
     reset_board();
 
@@ -494,7 +561,7 @@ void parse_fen(char *fen) {
                         king_squares[black] = square;
                     }
                     board[square] = char_pieces[*fen];
-                    *fen++;
+                    fen++;
                 }
                 //Match empty squares
                 if(*fen >= '0' && *fen <= '8') {
@@ -508,20 +575,19 @@ void parse_fen(char *fen) {
                     //Skip empty squares
                     file += offset;
 
-                    *fen++;
+                    fen++;
                 }
                 //Match end of rank
                 if(*fen == '/') {
-                    *fen++;
+                    fen++;
                 }
                // printf("square: %s | current FEN char: %c \n", square_to_coords[square], *fen);
-                
             }
         }
     }
 
     //Go to side parsing
-    *fen++;
+    fen++;
 
     //Parse side to move
     side = (*fen == 'w') ? white : black;
@@ -538,11 +604,11 @@ void parse_fen(char *fen) {
             case 'q': castle |= qc; break;
             case '-': break;
         }
-        *fen++; 
+        fen++;
     }
 
     //Go to enpassant square
-    *fen++;
+    fen++;
 
     //Parse enpassant square
     if(*fen != '-') {
@@ -574,18 +640,12 @@ void generate_moves_for_jumping_piece(moves *move_list, int square, int side, in
             int target_square = square + offsets[index];
 
             if(!(target_square & 0x88)) {
-                if(side == white) {
-                    if(board[target_square] == e) {
-                        add_move(move_list, encode_move(square, target_square, 0, 0, 0, 0 ,0));
-                    } else if(board[target_square] >= p && board[target_square] <= k) {
-                        add_move(move_list, encode_move(square, target_square, 0, 1, 0, 0 ,0));
-                    }
-                } else {
-                    if(board[target_square] == e) {
-                        add_move(move_list, encode_move(square, target_square, 0, 0, 0, 0 ,0));
-                    } else if(board[target_square] >= P && board[target_square] <= K) {
-                        add_move(move_list, encode_move(square, target_square, 0, 1, 0, 0 ,0));
-                    }
+                if(board[target_square] == e) {
+                    add_move(move_list, encode_move(square, target_square, 0, 0, 0, 0 ,0));
+                } else if(side == white && board[target_square] >= p && board[target_square] <= k) {
+                    add_move(move_list, encode_move(square, target_square, 0, 1, 0, 0 ,0));
+                } else if(side == black && board[target_square] >= P && board[target_square] <= K) {
+                    add_move(move_list, encode_move(square, target_square, 0, 1, 0, 0 ,0));
                 }
             }
         }
@@ -664,106 +724,102 @@ void generate_moves(moves *move_list) {
         if(!(square & 0x88)) {
 
             //White pawn and castling moves
-            if(side == white) {
-                if(board[square] == P) {
-                    //quiet
-                    int to_square = square - 16;
+            if(side == white && board[square] == P) {
+                //quiet
+                int to_square = square - 16;
 
-                    //check if target square is on board
-                    if(board[to_square] == e) {
-                        //pawn promotions
-                        if(square >= a7 && square <= h7) {
-                            add_move(move_list, encode_move(square, to_square, Q, 0, 0, 0 ,0));
-                            add_move(move_list, encode_move(square, to_square, R, 0, 0, 0 ,0));
-                            add_move(move_list, encode_move(square, to_square, B, 0, 0, 0 ,0));
-                            add_move(move_list, encode_move(square, to_square, N, 0, 0, 0 ,0));
-                        } else {
-                            //one square ahead
-                            add_move(move_list, encode_move(square, to_square, 0, 0, 0, 0 ,0));
+                //check if target square is on board
+                if(board[to_square] == e) {
+                    //pawn promotions
+                    if(square >= a7 && square <= h7) {
+                        add_move(move_list, encode_move(square, to_square, Q, 0, 0, 0 ,0));
+                        add_move(move_list, encode_move(square, to_square, R, 0, 0, 0 ,0));
+                        add_move(move_list, encode_move(square, to_square, B, 0, 0, 0 ,0));
+                        add_move(move_list, encode_move(square, to_square, N, 0, 0, 0 ,0));
+                    } else {
+                        //one square ahead
+                        add_move(move_list, encode_move(square, to_square, 0, 0, 0, 0 ,0));
 
-                            //two squares ahead
-                            to_square -= 16;
-                            if(square >= a2 && square <= h2 && board[to_square] == e) {
-                                add_move(move_list, encode_move(square, to_square, 0, 0, 1, 0 ,0));
-                            }
-                        }
-                    }
-
-                    //White pawn captures
-                    to_square = square - 15;
-                    int enpassant_move = (to_square == enpassant);
-                    if(!(to_square & 0x88) && ((board[to_square] >= p && board[to_square] <= q) || enpassant_move)) {
-                        if(square >= a7 && square <= h7) {
-                            add_move(move_list, encode_move(square, to_square, Q, 1, 0, 0 ,0));
-                            add_move(move_list, encode_move(square, to_square, R, 1, 0, 0 ,0));
-                            add_move(move_list, encode_move(square, to_square, B, 1, 0, 0 ,0));
-                            add_move(move_list, encode_move(square, to_square, N, 1, 0, 0 ,0));
-                        } else {
-                            add_move(move_list, encode_move(square, to_square, 0, 1, 0, enpassant_move, 0));
-                        }
-                    }
-                    to_square = square - 17;
-                    enpassant_move = (to_square == enpassant);
-                    if(!(to_square & 0x88) && ((board[to_square] >= p && board[to_square] <= q) || enpassant_move)) {
-                        if(square >= a7 && square <= h7) {
-                            add_move(move_list, encode_move(square, to_square, Q, 1, 0, 0 ,0));
-                            add_move(move_list, encode_move(square, to_square, R, 1, 0, 0 ,0));
-                            add_move(move_list, encode_move(square, to_square, B, 1, 0, 0 ,0));
-                            add_move(move_list, encode_move(square, to_square, N, 1, 0, 0 ,0));
-                        } else {
-                            add_move(move_list, encode_move(square, to_square, 0, 1, 0, enpassant_move, 0));
+                        //two squares ahead
+                        to_square -= 16;
+                        if(square >= a2 && square <= h2 && board[to_square] == e) {
+                            add_move(move_list, encode_move(square, to_square, 0, 0, 1, 0 ,0));
                         }
                     }
                 }
-            } else {
-                if(board[square] == p) {
-                    int to_square = square + 16;
 
-                    //check if target square is on board
-                    if(board[to_square] == e) {
-                        
-                        //pawn promotions
-                        if(square >= a2 && square <= h2) {
-                            add_move(move_list, encode_move(square, to_square, q, 0, 0, 0 ,0));
-                            add_move(move_list, encode_move(square, to_square, r, 0, 0, 0 ,0));
-                            add_move(move_list, encode_move(square, to_square, b, 0, 0, 0 ,0));
-                            add_move(move_list, encode_move(square, to_square, n, 0, 0, 0 ,0));
-                        } else {
-                            //one square ahead
-                            add_move(move_list, encode_move(square, to_square, 0, 0, 0, 0 ,0));
+                //White pawn captures
+                to_square = square - 15;
+                int enpassant_move = (to_square == enpassant);
+                if(!(to_square & 0x88) && ((board[to_square] >= p && board[to_square] <= q) || enpassant_move)) {
+                    if(square >= a7 && square <= h7) {
+                        add_move(move_list, encode_move(square, to_square, Q, 1, 0, 0 ,0));
+                        add_move(move_list, encode_move(square, to_square, R, 1, 0, 0 ,0));
+                        add_move(move_list, encode_move(square, to_square, B, 1, 0, 0 ,0));
+                        add_move(move_list, encode_move(square, to_square, N, 1, 0, 0 ,0));
+                    } else {
+                        add_move(move_list, encode_move(square, to_square, 0, 1, 0, enpassant_move, 0));
+                    }
+                }
+                to_square = square - 17;
+                enpassant_move = (to_square == enpassant);
+                if(!(to_square & 0x88) && ((board[to_square] >= p && board[to_square] <= q) || enpassant_move)) {
+                    if(square >= a7 && square <= h7) {
+                        add_move(move_list, encode_move(square, to_square, Q, 1, 0, 0 ,0));
+                        add_move(move_list, encode_move(square, to_square, R, 1, 0, 0 ,0));
+                        add_move(move_list, encode_move(square, to_square, B, 1, 0, 0 ,0));
+                        add_move(move_list, encode_move(square, to_square, N, 1, 0, 0 ,0));
+                    } else {
+                        add_move(move_list, encode_move(square, to_square, 0, 1, 0, enpassant_move, 0));
+                    }
+                }
+            } else if(side == black && board[square] == p) {
+                int to_square = square + 16;
 
-                            //two squares ahead
-                            to_square += 16;
-                            if(square >= a7 && square <= h7 && board[to_square] == e) {
-                                add_move(move_list, encode_move(square, to_square, 0, 0, 1, 0 ,0));
-                            }
+                //check if target square is on board
+                if(board[to_square] == e) {
+                    
+                    //pawn promotions
+                    if(square >= a2 && square <= h2) {
+                        add_move(move_list, encode_move(square, to_square, q, 0, 0, 0 ,0));
+                        add_move(move_list, encode_move(square, to_square, r, 0, 0, 0 ,0));
+                        add_move(move_list, encode_move(square, to_square, b, 0, 0, 0 ,0));
+                        add_move(move_list, encode_move(square, to_square, n, 0, 0, 0 ,0));
+                    } else {
+                        //one square ahead
+                        add_move(move_list, encode_move(square, to_square, 0, 0, 0, 0 ,0));
+
+                        //two squares ahead
+                        to_square += 16;
+                        if(square >= a7 && square <= h7 && board[to_square] == e) {
+                            add_move(move_list, encode_move(square, to_square, 0, 0, 1, 0 ,0));
                         }
                     }
+                }
 
-                    //Black pawn captures
-                    to_square = square + 15;
-                    int enpassant_move = (to_square == enpassant);
-                    if(!(to_square & 0x88) && ((board[to_square] >= P && board[to_square] <= Q) || enpassant_move)) {
-                        if(square >= a2 && square <= h2) {
-                            add_move(move_list, encode_move(square, to_square, q, 1, 0, 0 ,0));
-                            add_move(move_list, encode_move(square, to_square, r, 1, 0, 0 ,0));
-                            add_move(move_list, encode_move(square, to_square, b, 1, 0, 0 ,0));
-                            add_move(move_list, encode_move(square, to_square, n, 1, 0, 0 ,0));
-                        } else {
-                            add_move(move_list, encode_move(square, to_square, 0, 1, 0, enpassant_move ,0));
-                        }
+                //Black pawn captures
+                to_square = square + 15;
+                int enpassant_move = (to_square == enpassant);
+                if(!(to_square & 0x88) && ((board[to_square] >= P && board[to_square] <= Q) || enpassant_move)) {
+                    if(square >= a2 && square <= h2) {
+                        add_move(move_list, encode_move(square, to_square, q, 1, 0, 0 ,0));
+                        add_move(move_list, encode_move(square, to_square, r, 1, 0, 0 ,0));
+                        add_move(move_list, encode_move(square, to_square, b, 1, 0, 0 ,0));
+                        add_move(move_list, encode_move(square, to_square, n, 1, 0, 0 ,0));
+                    } else {
+                        add_move(move_list, encode_move(square, to_square, 0, 1, 0, enpassant_move ,0));
                     }
-                    to_square = square + 17;
-                    enpassant_move = (to_square == enpassant);
-                    if(!(to_square & 0x88) && ((board[to_square] >= P && board[to_square] <= Q) || enpassant_move)) {
-                        if(square >= a2 && square <= h2) {
-                            add_move(move_list, encode_move(square, to_square, q, 1, 0, 0 ,0));
-                            add_move(move_list, encode_move(square, to_square, r, 1, 0, 0 ,0));
-                            add_move(move_list, encode_move(square, to_square, b, 1, 0, 0 ,0));
-                            add_move(move_list, encode_move(square, to_square, n, 1, 0, 0 ,0));
-                        } else {
-                            add_move(move_list, encode_move(square, to_square, 0, 1, 0, enpassant_move ,0));
-                        }
+                }
+                to_square = square + 17;
+                enpassant_move = (to_square == enpassant);
+                if(!(to_square & 0x88) && ((board[to_square] >= P && board[to_square] <= Q) || enpassant_move)) {
+                    if(square >= a2 && square <= h2) {
+                        add_move(move_list, encode_move(square, to_square, q, 1, 0, 0 ,0));
+                        add_move(move_list, encode_move(square, to_square, r, 1, 0, 0 ,0));
+                        add_move(move_list, encode_move(square, to_square, b, 1, 0, 0 ,0));
+                        add_move(move_list, encode_move(square, to_square, n, 1, 0, 0 ,0));
+                    } else {
+                        add_move(move_list, encode_move(square, to_square, 0, 1, 0, enpassant_move ,0));
                     }
                 }
             }
@@ -903,7 +959,7 @@ int make_move(int move, int capture_flag) {
 }
 
 //Count nodes
-long nodes = 0;
+unsigned long nodes = 0;
 
 int getTimeInMs() {
     struct timeval t;
@@ -1018,7 +1074,7 @@ int perft_test(int depth, int debug) {
     }
     int time = getTimeInMs() - start_time;
     printf("\n Depth: %d", depth);
-    printf("\n Nodes: %ld", nodes);
+    printf("\n Nodes: %lu", nodes);
     printf("\n Time: %d ms", time);
     double secs = time/1000.0;
     printf("\n Nodes/sec: %.0f\n", time>0?nodes/secs:0);
@@ -1091,46 +1147,42 @@ int forceKingToCorner(int movingKingSquare, int opponentKingSquare, int opponent
 }
 
 int evaluatePiecePositions() {
-    int whiteScore = 0;
-    int blackScore = 0;
+    int score = 0;
 
     for(int i = 0; i<BOARD_SIZE; i++) {
-        int square = board[i];
-        if(square == e) {
-            continue;
-        }
-        if(!(square & 0x88)) {
+        if(!(i & 0x88)) {
+            int square = board[i];
+            if(square == e) {
+                continue;
+            }
             if(square == P) {
-                whiteScore += white_pawn_table[i];
+                score += white_pawn_table[i];
             } else if(square == p) {
-                blackScore += black_pawn_table[i];
+                score -= black_pawn_table[i];
             } else if(square == N) {
-                whiteScore += white_knight_table[i];
+                score += white_knight_table[i];
             } else if(square == n) {
-                blackScore += black_king_table[i];
+                score -= black_knight_table[i];
             } else if(square == B) {
-                whiteScore += white_bishop_table[i];
+                score += white_bishop_table[i];
             } else if(square == b) {
-                blackScore += black_bishop_table[i];
+                score -= black_bishop_table[i];
             } else if(square == R) {
-                whiteScore += white_rook_table[i];
+                score += white_rook_table[i];
             } else if(square == r) {
-                blackScore += black_rook_table[i];
+                score -= black_rook_table[i];
             } else if(square == Q) {
-                whiteScore += white_queen_table[i];
+                score += white_queen_table[i];
             } else if(square == q) {
-                blackScore += black_queen_table[i];
+                score -= black_queen_table[i];
             } else if(square == K) {
-                whiteScore += white_king_table[i];
+                score += white_king_table[i];
             } else if(square == k) {
-                blackScore += black_king_table[i];
+                score -= black_king_table[i];
             }
         }
     }
-    if(side == white) {
-        return whiteScore-blackScore;
-    } 
-    return blackScore-whiteScore;
+    return score;
 }
 
 typedef struct LINE {
@@ -1141,11 +1193,16 @@ typedef struct LINE {
 
 int evaluate(int board[]) {
     int material = count_material(board);
-
     int piecePositions = evaluatePiecePositions();
+    
     //int endgameEval = 0; //forceKingToCorner(king_squares[side], king_squares[!side], 1);
+    int result = material + piecePositions;
 
-    return  material + piecePositions;
+    if(side == black) {
+        result = result * (-1);
+    }
+
+    return result;
 }
 
 void print_move(int move, int newLine) {
@@ -1154,10 +1211,23 @@ void print_move(int move, int newLine) {
     if(isMoveCapture) {
         capture = "x";
     }
+    char* sourceSquare = square_to_coords[get_move_source(move)];
+    char* targetSquare = square_to_coords[get_move_target(move)];
+    if(get_move_castling(move)) {
+        if (strcmp(targetSquare, "g1") == 0 || strcmp(targetSquare, "g8") == 0) {
+            sourceSquare = "0-";
+            targetSquare = "0";
+        }
+        else if (strcmp(targetSquare, "c1") == 0 || strcmp(targetSquare, "c8") == 0) {
+            sourceSquare = "0-0-";
+            targetSquare = "0";
+        }
+
+    }
     if(newLine) {
-        printf("%s%s%s\n", square_to_coords[get_move_source(move)], capture, square_to_coords[get_move_target(move)]);
+        printf("%s%s%s\n", sourceSquare, capture, targetSquare);
     } else {
-        printf("%s%s%s", square_to_coords[get_move_source(move)], capture, square_to_coords[get_move_target(move)]);
+        printf("%s%s%s", sourceSquare, capture, targetSquare);
     }
 }
 
@@ -1197,7 +1267,8 @@ int areThereAnyLegalMoves() {
     return 0;
 }
 
-int QuiescenceSearch (int alpha, int beta) {
+int QuiescenceSearch (int max, int level2, int alpha, int beta) {
+
     int eval = evaluate(board);
     if (eval >= beta) {
         return beta;
@@ -1205,49 +1276,51 @@ int QuiescenceSearch (int alpha, int beta) {
     if (eval > alpha) {
         alpha = eval;
     }
+    if(level2 < max) {
+        moves move_list[1];
+        generate_moves(move_list);
+        int size = move_list->count;
 
-    moves move_list[1];
-    generate_moves(move_list);
-    int size = move_list->count;
+        for (int i = 0; i < size; i++) {
+            //Make move
+            int board_copy[BOARD_SIZE];
+            int side_copy;
+            int enpassant_copy;
+            int castle_copy;
+            int king_squares_copy[2];
 
-    for (int i = 0; i < size; i++) {
-        //Make move
-        int board_copy[BOARD_SIZE];
-        int side_copy;
-        int enpassant_copy;
-        int castle_copy;
-        int king_squares_copy[2];
+            //Copy
+            memcpy(board_copy, board, BOARD_MEM_SIZE);
+            memcpy(king_squares_copy, king_squares, 8);
+            side_copy = side;
+            enpassant_copy = enpassant;
+            castle_copy = castle;
 
-        //Copy
-        memcpy(board_copy, board, BOARD_MEM_SIZE);
-        memcpy(king_squares_copy, king_squares, 8);
-        side_copy = side;
-        enpassant_copy = enpassant;
-        castle_copy = castle;
+            int move = move_list->moves[i];
+            
+            if(!make_move(move, only_captures)) {
+                continue;
+            }
+            int newLevel = level2 + 1;
+            eval = -QuiescenceSearch (max, newLevel, -beta, -alpha);
+            //Restore board
+            memcpy(board, board_copy, BOARD_MEM_SIZE);
+            memcpy(king_squares, king_squares_copy, 8);
+            side = side_copy;
+            enpassant = enpassant_copy;
+            castle = castle_copy;
 
-        int move = move_list->moves[size];
-        
-        if(!make_move(move, only_captures)) {
-            continue;
-        }
-        eval = -QuiescenceSearch (-beta, -alpha);
-        //Restore board
-        memcpy(board, board_copy, BOARD_MEM_SIZE);
-        memcpy(king_squares, king_squares_copy, 8);
-        side = side_copy;
-        enpassant = enpassant_copy;
-        castle = castle_copy;
-
-        if (eval >= beta) {
-            return beta;
-        }
-        if (eval > alpha) {
-            alpha = eval;
+            if (eval >= beta) {
+                return beta;
+            }
+            if (eval > alpha) {
+                alpha = eval;
+            }
         }
     }
 
-			return alpha;
-		}
+    return alpha;
+}
 
 int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int beta, LINE * pline) {
     LINE line;
@@ -1255,7 +1328,7 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
     if(depth == 0) {
         pline->cmove = 0;
         //int score = evaluate(board);
-        int score = QuiescenceSearch (alpha, beta);
+        int score = QuiescenceSearch (MAX_QUIESCENCE_DEPTH, 0, alpha, beta);
         return score;
     } 
     moves move_list[1];
@@ -1283,7 +1356,7 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
             castle_copy = castle;
 
             int move = move_list->moves[move_count];
-            
+
             if(!make_move(move, all_moves)) {
                 continue;
             } 
@@ -1302,6 +1375,7 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
                 alpha = eval;
             }
             if(beta <= alpha) {
+                CUT_OFFS++;
                 break;
             }
 
@@ -1357,6 +1431,7 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
                 beta = eval;
             }
             if(beta <= alpha) {
+                CUT_OFFS++;
                 break;
             }
 
@@ -1404,16 +1479,22 @@ int playGame(int level, char *fen) {
         }
         printf("\nMaking move:    ");
         print_move(bestMoveWhite,1);
+        printf("Move code:      %d\n", bestMoveWhite);
         //printf("Move code = %d\n", bestMoveWhite);
 
         int timeElapsed = getTimeInMs() - start_time;
         printf("Move time:      %.2fs\n", timeElapsed/1000.0);
         printf("Nodes:          %d\n", EVALS);
+        printf("Cut offs        %d\n", CUT_OFFS);
         printf("Nodes/sec:      %.0f\n", EVALS/(timeElapsed/1000.0));
-        printf("**********************\n");
+        
+        
         EVALS = 0;
+        CUT_OFFS = 0;
         if(bestMoveWhite) {
             make_move(bestMoveWhite, all_moves);
+            print_fen(board);
+            printf("**********************\n");
             if(is_square_attacked(king_squares[side], !side) && !areThereAnyLegalMoves()) {
                 if(side == white) {
                     printf("0-1\n");
@@ -1485,6 +1566,10 @@ int main(int argc, char** argv) {
         scanf("%d",&level);
             
         parse_fen(start_position);
+        //parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
+        //parse_fen("3k4/5q2/8/1r6/8/8/1Q3P2/4K3 w - - 0 1");
+        //parse_fen("rnb1kbnr/pppp1ppp/4p3/8/3q2Q1/4P3/PPP1NPPP/RNB1KB1R w KQkq - 0 5");
+        //parse_fen("1r4k1/p4ppp/4pb2/2Pp4/Q1P2q1P/2N1n3/P1PB2P1/R3K2R w KQ - 0 20");
         //parse_fen("8/1pp5/3k4/1P1P1p2/1P1R1PPp/8/6P1/1r3K2 w - - 1 34");
 
         int res = 0;
@@ -1515,6 +1600,7 @@ int main(int argc, char** argv) {
 
                     if(!strcmp(targetCoord, target) && !strcmp(sourceCoord, source)) {
                         int moveStatus = make_move(moveEncooded, all_moves);
+                        print_fen(board);
                         if(!moveStatus) {
                             printf("Illegal move. Terminating");
                             break;
@@ -1539,7 +1625,8 @@ int main(int argc, char** argv) {
         }
     }
     else {
-        playGame(4, start_position);
+        //playGame(4, start_position);
+        //playGame(1, "3k4/5q2/8/1r6/8/8/1Q3P2/4K3 w - - 0 1");
         //playGame(1, "r1b1r1k1/ppb2ppp/8/8/3n3q/3B4/PPPN1PPn/R1BQ2KR w - - 0 14");
         //parse_fen("r1b1r1k1/ppb2ppp/8/8/3n4/3B4/PPPN1PPq/R1BQ2K1 w - - 0 15");
         //int score = evaluate(board);
@@ -1550,14 +1637,14 @@ int main(int argc, char** argv) {
         //parse_fen("4k3/4P3/8/8/R7/8/3qPb2/4K3 w - - 0 1");
         //parse_fen("3k4/R6R/8/8/8/8/8/8 w - - 0 1");
         //parse_fen("R3k3/7R/8/8/8/8/8/8 b - - 0 1"); //Game over, mate
-        //parse_fen("4k3/R7/7R/8/8/8/8/1K6 w - - 0 1");
+        playGame(4, "4k3/R7/7R/8/8/8/8/1K6 w - - 0 1");
         //parse_fen("3k4/8/8/8/8/7R/R7/3K4 w - - 0 1");
         //parse_fen("r5rk/5p1p/5R2/4B3/8/8/7P/7K w - - 0 1"); //Mate in three
         //parse_fen("7R/r1p1q1pp/3k4/1p1n1Q2/3N4/8/1PP2PPP/2B3K1 w - - 1 0"); //Mate in four
         //playGame(4, "7R/r1p1q1pp/3k4/1p1n1Q2/3N4/8/1PP2PPP/2B3K1 w - - 1 0");
         //parse_fen("Q7/p1p1q1pk/3p2rp/4n3/3bP3/7b/PP3PPK/R1B2R2 b - - 0 1"); //Mate in four
         //parse_fen("7R/r1p1q1pp/3k4/1p1n1Q2/3N4/8/1PP2PPP/2B3K1 w - - 1 0"); //Mate in four
-        //parse_fen("6k1/3b3r/1p1p4/p1n2p2/1PPNpP1q/P3Q1p1/1R1RB1P1/5K2 b - - 0 1"); //Mate in five - 301.65s
+        //playGame(4,"6k1/3b3r/1p1p4/p1n2p2/1PPNpP1q/P3Q1p1/1R1RB1P1/5K2 b - - 0 1"); //Mate in five - 301.65s
         //parse_fen("r2qkbnr/ppp1pppp/2b5/8/P1B5/1QP1P3/3P1PPP/RNB1K1NR b KQk - 3 10"); //Black should not caputre with queen
         //parse_fen("rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 7 11"); //Mate in seven
         //parse_fen("8/r1r3pk/1N2pp2/3p4/P2QP1qp/1R6/2PB2P1/5RK1 w - - 8 41");
