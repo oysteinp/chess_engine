@@ -1390,15 +1390,17 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
     generate_moves(move_list);
     
     int size = move_list->count;
-    //SJekke om trekker fremdeles finnes...
+    //Sjekke om trekker fremdeles finnes...
     //Legge inn flere muligheter
     if(initialDepth == depth && nextPrincipalMove) {
-        for(int i=size; i>=0; i--) {
-            move_list->moves[i+1] = move_list->moves[i];
+        for(int i=0; i<size; i++) {
+            if(move_list->moves[i] == nextPrincipalMove) {
+                int firstMove = move_list->moves[0];
+                move_list->moves[0] = nextPrincipalMove;
+                move_list->moves[i] = firstMove;
+                break;
+            }
         }
-        move_list->moves[0] = nextPrincipalMove;
-        move_list->count++;
-        size++;
         nextPrincipalMove = 0;
     }
 
@@ -1429,10 +1431,8 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
             } 
             foundLegalMove = 1;
             if(depth == initialDepth) {
-                printf("\rEvaluating move: ");
-                fflush(stdout);
-                print_move(move, 0);
-                printf(", code = %d\n", move);
+                //printf("\rEvaluating move: ");
+                //print_move(move, 0);
             }
             int eval = minimax(initialDepth, depth -1, 0, alpha, beta, &line);
             
@@ -1442,7 +1442,7 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
                 }
                 maxEval = eval;
                 if(depth == initialDepth) {
-                    printf("New best move: ");
+                    printf("%*.2f ", 6, eval/100.0);
                     print_move(move, 0);
                     printf(" ");
                     
@@ -1450,7 +1450,7 @@ int minimax(int initialDepth, int depth, int maximizingPlayer, int alpha, int be
                         print_move(line.argmove[i],0);
                         printf(" ");
                     }
-                    printf(", score = %.2f, code = %d\n", eval/100.0, move);
+                    printf("\n");
                 }
                 
             } 
@@ -1559,12 +1559,6 @@ int playGame(int level, char *fen) {
 
         float score = minimax(PLY, PLY, 1, -9999999, 9999999, &line) / 100.0;
 
-        printf("Principal line: %.2f\n", score);
-        for(int i=0; i< line.cmove; i++) {
-            //printf("%d\n", line.argmove[i]);
-            print_move(line.argmove[i],0);
-            printf(" ");
-        }
         printf("\nMaking move:    ");
         print_move(bestMoveWhite,1);
         printf("Move code:      %d\n", bestMoveWhite);
@@ -1659,6 +1653,7 @@ int main(int argc, char** argv) {
         scanf("%d",&level);
             
         parse_fen(start_position);
+        //parse_fen("2b1k2r/8/2p1p1p1/2bpP3/6rq/2N4P/P1PB1PP1/R3QRK1 w - - 1 21");
         //parse_fen("r3k3/2qb1pb1/p3p1rn/2PpP1p1/1p4P1/5Q1P/PPPN1B2/R2N1RK1 w q - 2 23");
         //parse_fen("rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 7 11");
         //parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
